@@ -1,0 +1,10 @@
+inputs/*
+final/*
+blurred/*
+multithread-res/*
+multithreaded_ou/*
+.env
+venv
+__pycache__
+*.mp4
+*.js
