@@ -10,7 +10,7 @@ RUN mkdir -p inputs blurred multithreaded_ou multithread-res final images
 RUN python -m venv venv
 
 # Install the required dependencies inside the virtual environment
-RUN pip install --no-cache-dir common Flask boto3 numpy opencv-python-headless awscli deface
+RUN pip install --no-cache-dir common Flask boto3 numpy opencv-python-headless awscli deface psutil
 
 RUN apt-get update && \
     apt-get install -y ffmpeg && \

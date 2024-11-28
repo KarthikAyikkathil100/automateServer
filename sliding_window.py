@@ -129,8 +129,8 @@ def sliding_window_main(master, file_name, fps, total_frames):
                 'direction': 'straight',
                 'start': 0,
                 'end': (outputData[0])['start'],
-                'startFormat': format_seconds(0),
-                'endFormat': format_seconds((outputData[0])['start']),
+                # 'startFormat': format_seconds(0),
+                # 'endFormat': format_seconds((outputData[0])['start']),
                 'message': get_direction_mesage('straight'),
             })
         for index, el in enumerate(outputData):
@@ -143,8 +143,8 @@ def sliding_window_main(master, file_name, fps, total_frames):
                         'direction': 'straight',
                         'start': prev['end'],
                         'end': el['start'],
-                        'startFormat': format_seconds(prev['end']),
-                        'endFormat': format_seconds(el['start']),
+                        # 'startFormat': format_seconds(prev['end']),
+                        # 'endFormat': format_seconds(el['start']),
                         'message': get_direction_mesage('straight'),
                     })
                     straightStubData.append(el)
@@ -159,8 +159,8 @@ def sliding_window_main(master, file_name, fps, total_frames):
                 'message': get_direction_mesage('straight'),
                 'start': (straightStubData[-1])['end'],
                 'end': last_second_in_video,
-                'startFormat': format_seconds((straightStubData[-1])['end']),
-                'endFormat': format_seconds(last_second_in_video),
+                # 'startFormat': format_seconds((straightStubData[-1])['end']),
+                # 'endFormat': format_seconds(last_second_in_video),
             })
         
         if (straightStubData[0]['start'] != 0):
@@ -169,16 +169,52 @@ def sliding_window_main(master, file_name, fps, total_frames):
                 'message': get_direction_mesage('straight'),
                 'start': 0,
                 'end': straightStubData[0]['start'],
-                'startFormat': format_seconds(0),
-                'endFormat': format_seconds(straightStubData[0]['start']),
+                # 'startFormat': format_seconds(0),
+                # 'endFormat': format_seconds(straightStubData[0]['start']),
             })
+        finalDataRes = adjustTime(straightStubData)
+        if finalDataRes == None:
+            return None
         with open(f'multithread-res/{file_name}.txt', 'w', encoding='utf-8') as f:
             json.dump({'data': straightStubData}, f)
         print('File write done!!')
-        return straightStubData
+        return finalDataRes
     except Exception as e:
         print('Error in sliding_window_main')
         print(e)
+        return None
+
+def adjustTime(master):
+    try:
+        all_turns = ['right', 'slight right', 'left', 'slight left']
+        total_len = len(master)
+        processesd_master = []
+        for index, el in enumerate(master):
+            curr_p = el
+            next_p = None
+            if index+1 <= total_len-1:
+                next_p = master[index+1]
+            
+            if (curr_p.get('direction') == 'straight' and next_p != None and  any( direction_name == next_p.get('direction') for direction_name in all_turns)):
+                temp = el
+                temp['end'] = next_p.get('start') - 2
+                processesd_master.append(temp)
+            elif curr_p.get('direction') == 'straight' and next_p == None:
+                processesd_master.append(el)
+            elif any( direction_name == curr_p.get('direction') for direction_name in all_turns):
+                if len(processesd_master) == 0:
+                    processesd_master.append(el)
+                else:
+                    temp = processesd_master[-1]
+                    el['start'] = temp.get('end')
+                    processesd_master.append(el)
+            else:
+                processesd_master.append(el)
+        return processesd_master
+    except Exception as e:
+        print('Error while adjusting time')
+        print(e)
+        return None
 
 def check_same_group(current_group_data: Dict[str, Any], data: Dict[str, Any]) -> bool:
     data_direction_is_left = directionTypes['LEFT'] in data['direction'].lower()
@@ -241,8 +277,8 @@ def process_sliding_window_output(data):
                 'end': int(end),
                 'direction': group[0]['direction'],
                 'message': get_direction_mesage(group[0]['direction']),
-                'startFormat': format_seconds(int(start)),
-                'endFormat': format_seconds(int(end)),
+                # 'startFormat': format_seconds(int(start)),
+                # 'endFormat': format_seconds(int(end)),
             })
         print('finall!!!!')
         print(final_data)

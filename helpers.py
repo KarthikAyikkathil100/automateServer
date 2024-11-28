@@ -1,7 +1,8 @@
 import boto3
 import logging
 logging.basicConfig(level=logging.INFO)
-
+import psutil
+import time
 # Initialize DynamoDB resource using boto3
 dynamodb = boto3.resource('dynamodb')
 table_name = 'dev-Routes'
@@ -102,3 +103,16 @@ def upload_video_to_s3(file_path, bucket_name, object_name=None):
         logging.info("Error: Incomplete AWS credentials.")
     except Exception as e:
         logging.info(f"Error uploading file: {e}")
+
+def get_average_cpu_utilization(interval=1, times=5):
+    cpu_usages = []
+    
+    # Collect CPU usage over the specified times
+    for _ in range(times):
+        # Get CPU usage percentage for the system over the interval
+        cpu_usage = psutil.cpu_percent(interval=interval)
+        cpu_usages.append(cpu_usage)
+        
+    # Calculate and return the average CPU usage
+    average_cpu_usage = sum(cpu_usages) / len(cpu_usages)
+    return average_cpu_usage

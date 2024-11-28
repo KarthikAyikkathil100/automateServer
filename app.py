@@ -7,7 +7,7 @@ from flask import Flask, request, jsonify
 from blur_automate import blurVideo
 from direction_detection import directionDetection
 from botocore.exceptions import ClientError
-from helpers import download_video_from_s3, get_route_data, upload_video_to_s3, store_detected_directions, update_route_field
+from helpers import download_video_from_s3, get_route_data, upload_video_to_s3, store_detected_directions, update_route_field, get_average_cpu_utilization
 from arrow_attachment import arrow_attachment_main
 import logging
 logging.basicConfig(level=logging.INFO)
@@ -60,6 +60,7 @@ mas = {"data": [{"start": 407, "end": 408, "direction": "right", "startFormat": 
 
 @app.route('/test/automation-start', methods=['POST'])
 def testPost():
+    file_name = None
     try:
         data = request.get_json()
         route_id = data['route_id']
@@ -80,19 +81,24 @@ def testPost():
         download_video_from_s3('media.demo.test', f'{file_name}', f'inputs/{file_name}')
         
         # 2) Blur the video
+        update_route_field(route_id, 'processStatus', 'BLUR_START')
         blurVideo(file_name)
         logging.info('blur complete')
+        upload_video_to_s3(f'blurred/{file_name}', bucket_name) # This will become the base version
         update_route_field(route_id, 'processStatus', 'BLUR_COMPLETE')
         # 3) Direction detection
+        update_route_field(route_id, 'processStatus', 'DIRECTION_DETECTION_START')
         final_directions = directionDetection(file_name)
-        store_detected_directions(final_directions, route_id)
-        logging.info('Direction detection complete')
-        update_route_field(route_id, 'processStatus', 'DIRECTION_DETECTION_SUCCESS')
-
-        data = {
-            "message": "Done processing..."
-        }
-        return jsonify(data), 200
+        if final_directions == None:
+            update_route_field(route_id, 'processStatus', 'DIRECTION_DETECTION_ERROR')
+        else:
+            store_detected_directions(final_directions, route_id)
+            logging.info('Direction detection complete')
+            update_route_field(route_id, 'processStatus', 'DIRECTION_DETECTION_SUCCESS')
+            data = {
+                "message": "Done processing..."
+            }
+            return jsonify(data), 200
     except Exception as e:
         logging.info('Error while processintg video')
         data = {
@@ -109,8 +115,11 @@ def testPost():
 @app.route('/test/direction-change', methods = ['POST'])
 def processArrowStick():
     route_id = None
+    file_name = None
     try:
         logging.info('Arrow attachment part')
+        data = request.get_json()
+        route_id = data['route_id']
         route_data = get_route_data(route_id)
         if route_data == None:
             logging.info('Route not found')
@@ -119,8 +128,11 @@ def processArrowStick():
                 'message': 'Route not found'
             }
             return jsonify(res_dat), 404
+
+        update_route_field(route_id, 'processStatus', 'ARROW_ATTACHMENT_START')
         video_url = route_data.get('videoURL')
         if video_url == None:
+            update_route_field(route_id, 'processStatus', 'ARROW_ATTACHMENT_ERROR')
             res_dat = {
                 'error': True,
                 'message': 'Route video not found'
@@ -131,9 +143,9 @@ def processArrowStick():
         download_video_from_s3('media.demo.test', f'{file_name}', f'blurred/{file_name}')
         logging.info('download done')
         final_directions = route_data.get('detectedDirections')
-        logging.info('got directions')
         if final_directions == None:
             logging.info('no directions found')
+            update_route_field(route_id, 'processStatus', 'ARROW_ATTACHMENT_ERROR')
             res_dat = {
                 'error': True,
                 'message': 'Direction data not found'
@@ -149,7 +161,10 @@ def processArrowStick():
         logging.info("Command Output codec:", result_dim.stdout)
         logging.info("Command Error Output codec:", result_dim.stderr)
 
-        upload_video_to_s3(f'final/codec_{file_name}', bucket_name, file_name)
+        new_file_name = f'new_{file_name}'
+        new_link = f'https://s3.ap-south-1.amazonaws.com/media.demo.test/{new_file_name}'
+        upload_video_to_s3(f'final/codec_{file_name}', bucket_name, new_file_name)
+        update_route_field(route_id, 'processedVideoURL', new_link)
         update_route_field(route_id, 'processStatus', 'ARROW_ATTACHMENT_SUCCESS')
 
         res_dat = {
@@ -179,6 +194,16 @@ def processArrowStick():
         except Exception as e:
             print('Error removing file')
     
+
+@app.route('/check-health')
+def cpuCheck():
+    return "Server says hii", 200
+    # avg_cpu = get_average_cpu_utilization(interval=1, times=2)
+    # logging.info(f'Average CPU => {avg_cpu}')
+    # if avg_cpu > 80:
+    #     return "", 500
+    # else:    
+    #     return "", 200
 
 # The expected body of the request
 # {'route_id': '', 'blur': '', 'direction_detect': True/False, 'arrow_attachment': True/False, 'file_name': ''}

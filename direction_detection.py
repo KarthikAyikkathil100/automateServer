@@ -206,10 +206,12 @@ def directionDetection(file_name):
         # logging.info(results)
 
         finalOutput = sliding_window_main(results, file_name, fps, total_frames)
-        
-        logging.info('finalOutput --')
-        logging.info(finalOutput)
-        return finalOutput
+        if finalOutput == None:
+            return None
+        else:
+            logging.info('finalOutput --')
+            logging.info(finalOutput)
+            return finalOutput
     except Exception as e:
         logging.info('Error in directionDetection fn')
         logging.info(e)
@@ -219,3 +221,5 @@ def directionDetection(file_name):
             logging.info('Error while updatin Database')
 
 
+if __name__ == '__main__':
+    directionDetection('manoj.MOV')
