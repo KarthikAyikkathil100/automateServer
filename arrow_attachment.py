@@ -369,7 +369,7 @@ def processDirections(master):
                             # prev was straight
                             sticky_temp = copy(curr_p)
                             sticky_temp['sticky'] = True
-                            sticky_temp['start'] = (processDirections[-1]).get('end')
+                            sticky_temp['start'] = (processedDirections[-1]).get('end')
                             sticky_temp['end'] = curr_p.get('start')
                             # Push the sticky arrow
                             processedDirections.append(sticky_temp)
@@ -523,7 +523,6 @@ def arrow_attachment_main(file_name, master):
         # Release resources
         cap.release()
         out.release()
-        cv2.destroyAllWindows()
     except Exception as e:
         logging.info('Error in Arrow attachment')
         logging.info(e)

@@ -9,6 +9,8 @@ from direction_detection import directionDetection
 from botocore.exceptions import ClientError
 from helpers import download_video_from_s3, get_route_data, upload_video_to_s3, store_detected_directions, update_route_field, get_average_cpu_utilization
 from arrow_attachment import arrow_attachment_main
+import threading
+from text_blur import text_blur_main
 import logging
 logging.basicConfig(level=logging.INFO)
 
@@ -195,9 +197,82 @@ def processArrowStick():
             print('Error removing file')
     
 
+@app.route('/test/text-blur', methods=['POST'])
+def testTextBlur():
+    file_name = None
+    try:
+        data = request.get_json()
+        route_id = data['route_id']
+        route_data = get_route_data(route_id)
+        if route_data == None:
+            data = {
+                "message": "Route not found"
+            }
+            return jsonify(data), 404 
+        thread = threading.Thread(target=textBlurJob, args=(data, route_data))
+        thread.daemon = True  # This ensures the thread will be killed when the main program exits
+        thread.start()
+        res_data = {
+            "message": "Route submitted for text-blur process"
+        }
+        return jsonify(res_data), 200 
+    except Exception as e:
+        update_route_field(route_id, 'processStatus', 'TEXT_BLUR_ERROR')
+        print('Error in text blur')
+        print(e)
+        return "Error while processing json file", 500
+
+
+
+def textBlurJob(data, route_data):
+    try:
+        route_id = data['route_id']
+        # route_data = get_route_data(route_id)
+        
+        json_file_path = route_data['textBlurJsonFileName']
+        if json_file_path == None:
+            update_route_field(route_id, 'processStatus', 'TEXT_BLUR_ERROR')
+            print('Text blur file not found')
+            return
+        
+        video_url = route_data.get('videoURL')
+        if video_url == None:
+            update_route_field(route_id, 'processStatus', 'TEXT_BLUR_ERROR')
+            print('Route Video not found')
+            return
+        file_name = video_url.split('/')[-1]
+        print('Started downloading the Video File to be processed')
+        download_video_from_s3('media.demo.test', f'{file_name}', f'inputs/{file_name}')
+
+        print('Started downloading the JSON File to be processed')
+        # Download the Google's Video Intelligence text-blur output stored in the AWS-S3
+        json_file_name = json_file_path.split('/')[-1]
+        download_video_from_s3('media.demo.test', json_file_path, f'text_json/{json_file_name}')
+
+        # Start the text blur script
+        blur_success = text_blur_main(file_name, json_file_name)
+
+        if blur_success == False:
+            print('Error while blurrig text')
+            update_route_field(route_id, 'processStatus', 'TEXT_BLUR_ERROR')
+            return
+        else:
+            # Upload the text-blurred video to S3
+            upload_video_to_s3(f'final/{file_name}', 'media.demo.test')
+            # Remove file from local
+            os.remove(f'final/{file_name}')
+            update_route_field(route_id, 'processStatus', 'TEXT_BLUR_SUCCESS')
+            return
+    except Exception as e:
+        update_route_field(route_id, 'processStatus', 'TEXT_BLUR_ERROR')
+        print('Error in text blur')
+        print(e)
+        return "Error while processing json file", 500
+
+
 @app.route('/check-health')
 def cpuCheck():
-    return "Server says hii", 200
+    return "[Updated] Server says hii", 200
     # avg_cpu = get_average_cpu_utilization(interval=1, times=2)
     # logging.info(f'Average CPU => {avg_cpu}')
     # if avg_cpu > 80:

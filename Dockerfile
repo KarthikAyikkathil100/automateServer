@@ -3,7 +3,7 @@ FROM python:3
 
 WORKDIR /app
 
-RUN mkdir -p inputs blurred multithreaded_ou multithread-res final images
+RUN mkdir -p inputs blurred multithreaded_ou multithread-res final images text_json
 
 
 # Create a virtual environment
@@ -26,7 +26,7 @@ COPY blur_automate.py .
 COPY sliding_window.py .
 COPY arrow_attachment.py .
 COPY helpers.py .
-
+COPY text_blur.py
 COPY images/ ./images/
 
 # Verify the installation
