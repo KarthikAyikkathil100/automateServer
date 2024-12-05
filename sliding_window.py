@@ -116,7 +116,7 @@ def sliding_window_main(master, file_name, fps, total_frames):
     try:
         data = []
         for item in master:
-            if item != None:
+            if item != None and len(item) > 0:
                 data.extend(item['data'])
         finalData = sliding_window(data, fps)
         
