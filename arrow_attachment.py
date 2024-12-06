@@ -7,40 +7,43 @@ from helpers import  update_route_field
 logging.basicConfig(level=logging.INFO)
 
 # Staples.mov
-master  = [
-  {
-    "direction": "straight",
-    "start": 0,
-    "end": 18,
-    "message": "Go straight"
-  },
-  {
-    "start": 18,
-    "end": 24,
-    "direction": "left",
-    "message": "Turn left",
-    "sticky": True
-  },
+# master  = [
 #   {
-#     "start": 20,
+#     "direction": "straight",
+#     "start": 0,
+#     "end": 18,
+#     "message": "Go straight"
+#   },
+# #   {
+# #     "start": 18,
+# #     "end": 20,
+# #     "direction": "left",
+# #     "message": "Turn left",
+# #     "sticky": True
+# #   },
+#   {
+#     "start": 18,
 #     "end": 24,
 #     "direction": "left",
-#     "message": "Turn left"
+#     "message": "Turn left",
+#     "sticky": True,
+#     "fadeout": True,
 #   },
-  {
-    "start": 24,
-    "end": 27,
-    "sticky": True,
-    "direction": "slight right",
-    "message": "Turn slight right"
-  },
-  {
-    "direction": "straight",
-    "message": "Go straight",
-    "start": 27,
-    "end": 28
-  }
-]
+#   {
+#     "start": 24,
+#     "end": 27,
+#     "sticky": True,
+#     "direction": "slight right",
+#     "message": "Turn slight right",
+#     "fadeout": True,
+#   },
+#   {
+#     "direction": "straight",
+#     "message": "Go straight",
+#     "start": 27,
+#     "end": 28
+#   }
+# ]
 
 # Manoj.MOV
 # master = [
@@ -562,6 +565,504 @@ master  = [
 #   }
 # ]
 
+#Mia_test with fade
+# NOTE: This won't have sticky for slight turns
+# master = [
+#   {
+#     "direction": "straight",
+#     "start": 0,
+#     "end": 24,
+#     "message": "Go straight"
+#   },
+#   {
+#     "start": 24,
+#     "end": 33,
+#     "direction": "right",
+#     "message": "Turn right",
+#     "sticky": True,
+#     'fadeout': True
+#   },
+# #   {
+# #     "start": 26,
+# #     "end": 31,
+# #     "direction": "right",
+# #     "message": "Turn right"
+# #   },
+# #   {
+# #     "start": 31,
+# #     "end": 33,
+# #     "direction": "right",
+# #     "sticky": True,
+# #     'fadeout': True
+# #     "message": "Turn right"
+# #   },
+#   {
+#     "direction": "straight",
+#     "start": 33,
+#     "end": 50,
+#     "message": "Go straight"
+#   },
+# #   {
+# #     "start": 44,
+# #     "end": 50,
+# #     "direction": "slight right",
+# #     "message": "Turn slight right",
+# #     "sticky": True,
+# #     'fadeout': True
+# #   },
+# #   {
+# #     "start": 46,
+# #     "end": 50,
+# #     "direction": "slight right",
+# #     "message": "Turn slight right"
+# #   },
+#   {
+#     "direction": "straight",
+#     "start": 50,
+#     "end": 50,
+#     "message": "Go straight"
+#   },
+#   {
+#     "start": 50,
+#     "end": 54,
+#     "direction": "left",
+#     "message": "Turn left",
+#     "sticky": True,
+#     'fadeout': True
+#   },
+# #   {
+# #     "start": 49,
+# #     "end": 54,
+# #     "direction": "left",
+# #     "message": "Turn left"
+# #   },
+#   {
+#     "direction": "straight",
+#     "start": 54,
+#     "end": 130,
+#     "message": "Go straight"
+#   },
+#   {
+#     "start": 130,
+#     "end": 137,
+#     "direction": "left",
+#     "message": "Turn left",
+#     "sticky": True,
+#     'fadeout': True
+#   },
+# #   {
+# #     "start": 132,
+# #     "end": 137,
+# #     "direction": "left",
+# #     "message": "Turn left"
+# #   },
+#   {
+#     "direction": "straight",
+#     "start": 137,
+#     "end": 146,
+#     "message": "Go straight"
+#   },
+#   {
+#     "start": 146,
+#     "end": 152,
+#     "direction": "right",
+#     "message": "Turn right",
+#     "sticky": True,
+#     'fadeout': True
+#   },
+# #   {
+# #     "start": 148,
+# #     "end": 152,
+# #     "direction": "right",
+# #     "message": "Turn right"
+# #   },
+#   {
+#     "direction": "straight",
+#     "start": 152,
+#     "end": 401,
+#     "message": "Go straight"
+#   },
+#   {
+#     "start": 401,
+#     "end": 406,
+#     "direction": "right",
+#     "message": "Turn right",
+#     "sticky": True,
+#     'fadeout': True
+#   },
+# #   {
+# #     "start": 403,
+# #     "end": 406,
+# #     "direction": "right",
+# #     "message": "Turn right"
+# #   },
+#   {
+#     "direction": "straight",
+#     "start": 406,
+#     "end": 492,
+#     "message": "Go straight"
+#   },
+#   {
+#     "start": 492,
+#     "end": 499,
+#     "direction": "right",
+#     "message": "Turn right",
+#     "sticky": True,
+#     'fadeout': True
+#   },
+# #   {
+# #     "start": 494,
+# #     "end": 499,
+# #     "direction": "right",
+# #     "message": "Turn right"
+# #   },
+#   {
+#     "direction": "straight",
+#     "start": 499,
+#     "end": 505,
+#     "message": "Go straight"
+#   },
+#   {
+#     "start": 505,
+#     "end": 511,
+#     "direction": "slight left",
+#     "message": "Turn slight left",
+#     # "sticky": True,
+#     'fadeout': True
+#   },
+# #   {
+# #     "start": 507,
+# #     "end": 511,
+# #     "direction": "slight left",
+# #     "message": "Turn slight left"
+# #   },
+#   {
+#     "direction": "straight",
+#     "start": 511,
+#     "end": 524,
+#     "message": "Go straight"
+#   },
+#   {
+#     "start": 524,
+#     "end": 530,
+#     "direction": "right",
+#     "message": "Turn right",
+#     "sticky": True,
+#     'fadeout': True
+#   },
+# #   {
+# #     "start": 526,
+# #     "end": 530,
+# #     "direction": "right",
+# #     "message": "Turn right"
+# #   },
+#   {
+#     "direction": "straight",
+#     "start": 530,
+#     "end": 572,
+#     "message": "Go straight"
+#   },
+#   {
+#     "start": 572,
+#     "end": 578,
+#     "direction": "slight left",
+#     "message": "Turn slight left",
+#     # "sticky": True,
+#     'fadeout': True
+#   },
+# #   {
+# #     "start": 574,
+# #     "end": 578,
+# #     "direction": "slight left",
+# #     "message": "Turn slight left"
+# #   },
+#   {
+#     "direction": "straight",
+#     "start": 578,
+#     "end": 585,
+#     "message": "Go straight"
+#   },
+#   {
+#     "start": 585,
+#     "end": 592,
+#     "direction": "right",
+#     "message": "Turn right",
+#     "sticky": True,
+#     'fadeout': True
+#   },
+# #   {
+# #     "start": 587,
+# #     "end": 592,
+# #     "direction": "right",
+# #     "message": "Turn right"
+# #   },
+#   {
+#     "start": 592,
+#     "end": 595,
+#     "direction": "right",
+#     "message": "Turn right"
+#   },
+#   {
+#     "direction": "straight",
+#     "message": "Go straight",
+#     "start": 595,
+#     "end": 597
+#   }
+# ]
+
+# mia_test.mp4 with fade and sticky slight left/right
+master = [
+  {
+    "direction": "straight",
+    "start": 0,
+    "end": 24,
+    "message": "Go straight"
+  },
+  {
+    "start": 24,
+    "end": 33,
+    "direction": "right",
+    "message": "Turn right",
+    "sticky": True,
+    'fadeout': True
+  },
+#   {
+#     "start": 26,
+#     "end": 31,
+#     "direction": "right",
+#     "message": "Turn right"
+#   },
+#   {
+#     "start": 31,
+#     "end": 33,
+#     "direction": "right",
+#     "sticky": True,
+#     'fadeout': True
+#     "message": "Turn right"
+#   },
+  {
+    "direction": "straight",
+    "start": 33,
+    "end": 50,
+    "message": "Go straight"
+  },
+#   {
+#     "start": 44,
+#     "end": 50,
+#     "direction": "slight right",
+#     "message": "Turn slight right",
+#     "sticky": True,
+#     'fadeout': True
+#   },
+#   {
+#     "start": 46,
+#     "end": 50,
+#     "direction": "slight right",
+#     "message": "Turn slight right"
+#   },
+  {
+    "direction": "straight",
+    "start": 50,
+    "end": 50,
+    "message": "Go straight"
+  },
+  {
+    "start": 50,
+    "end": 54,
+    "direction": "left",
+    "message": "Turn left",
+    "sticky": True,
+    'fadeout': True
+  },
+#   {
+#     "start": 49,
+#     "end": 54,
+#     "direction": "left",
+#     "message": "Turn left"
+#   },
+  {
+    "direction": "straight",
+    "start": 54,
+    "end": 130,
+    "message": "Go straight"
+  },
+  {
+    "start": 130,
+    "end": 137,
+    "direction": "left",
+    "message": "Turn left",
+    "sticky": True,
+    'fadeout': True
+  },
+#   {
+#     "start": 132,
+#     "end": 137,
+#     "direction": "left",
+#     "message": "Turn left"
+#   },
+  {
+    "direction": "straight",
+    "start": 137,
+    "end": 146,
+    "message": "Go straight"
+  },
+  {
+    "start": 146,
+    "end": 152,
+    "direction": "right",
+    "message": "Turn right",
+    "sticky": True,
+    'fadeout': True
+  },
+#   {
+#     "start": 148,
+#     "end": 152,
+#     "direction": "right",
+#     "message": "Turn right"
+#   },
+  {
+    "direction": "straight",
+    "start": 152,
+    "end": 401,
+    "message": "Go straight"
+  },
+  {
+    "start": 401,
+    "end": 406,
+    "direction": "right",
+    "message": "Turn right",
+    "sticky": True,
+    'fadeout': True
+  },
+#   {
+#     "start": 403,
+#     "end": 406,
+#     "direction": "right",
+#     "message": "Turn right"
+#   },
+  {
+    "direction": "straight",
+    "start": 406,
+    "end": 492,
+    "message": "Go straight"
+  },
+  {
+    "start": 492,
+    "end": 499,
+    "direction": "right",
+    "message": "Turn right",
+    "sticky": True,
+    'fadeout': True
+  },
+#   {
+#     "start": 494,
+#     "end": 499,
+#     "direction": "right",
+#     "message": "Turn right"
+#   },
+  {
+    "direction": "straight",
+    "start": 499,
+    "end": 503,
+    "message": "Go straight"
+  },
+  {
+    "start": 503,
+    "end": 505,
+    "direction": "slight left",
+    "message": "Turn slight left",
+    "sticky": True,
+    'fadeout': True
+  },
+  {
+    "start": 505,
+    "end": 511,
+    "direction": "slight left",
+    "message": "Turn slight left",
+    # "sticky": True,
+    'fadeout': True
+  },
+#   {
+#     "start": 507,
+#     "end": 511,
+#     "direction": "slight left",
+#     "message": "Turn slight left"
+#   },
+  {
+    "direction": "straight",
+    "start": 511,
+    "end": 524,
+    "message": "Go straight"
+  },
+  {
+    "start": 524,
+    "end": 530,
+    "direction": "right",
+    "message": "Turn right",
+    "sticky": True,
+    'fadeout': True
+  },
+#   {
+#     "start": 526,
+#     "end": 530,
+#     "direction": "right",
+#     "message": "Turn right"
+#   },
+  {
+    "direction": "straight",
+    "start": 530,
+    "end": 572,
+    "message": "Go straight"
+  },
+  {
+    "start": 572,
+    "end": 578,
+    "direction": "slight left",
+    "message": "Turn slight left",
+    # "sticky": True,
+    'fadeout': True
+  },
+#   {
+#     "start": 574,
+#     "end": 578,
+#     "direction": "slight left",
+#     "message": "Turn slight left"
+#   },
+  {
+    "direction": "straight",
+    "start": 578,
+    "end": 585,
+    "message": "Go straight"
+  },
+  {
+    "start": 585,
+    "end": 592,
+    "direction": "right",
+    "message": "Turn right",
+    "sticky": True,
+    'fadeout': True
+  },
+#   {
+#     "start": 587,
+#     "end": 592,
+#     "direction": "right",
+#     "message": "Turn right"
+#   },
+  {
+    "start": 592,
+    "end": 595,
+    "direction": "right",
+    "message": "Turn right"
+  },
+  {
+    "direction": "straight",
+    "message": "Go straight",
+    "start": 595,
+    "end": 597
+  }
+]
+
+
 #mia_err.mp4
 # master = [{'direction': 'straight', 'start': 0, 'end': 6, 'message': 'Go straight'}, {'start': 6, 'end': 8, 'direction': 'left', 'message': 'Turn left', 'sticky': True}, {'start': 8, 'end': 13, 'direction': 'left', 'message': 'Turn left'}, {'direction': 'straight', 'start': 13, 'end': 13, 'message': 'Go straight'}, {'start': 13, 'end': 14, 'direction': 'slight left', 'message': 'Turn slight left', 'sticky': True}, {'start': 14, 'end': 18, 'direction': 'slight left', 'message': 'Turn slight left'}, {'direction': 'straight', 'message': 'Go straight', 'start': 18, 'end': 24}]
 
@@ -667,7 +1168,7 @@ def get_direction_icon(direction):
     else:
         return arrow_straight 
 
-def arrow_attachment_main(file_name, master):
+def arrow_attachment_main_v1(file_name, master):
     try: 
         # Load the video
         cap = cv2.VideoCapture(f'blurred/{file_name}')
@@ -763,7 +1264,7 @@ def arrow_attachment_main(file_name, master):
             if current_time > 186 and current_time < 208:
                print(f'duration => {duration}, turn_duration => {turn_duration}, direction => {direction_string} ') 
             # Animate the current arrow (reset if changed, continue if not)
-            frame = animate_arrow_approach(frame, current_arrow, current_time, sticky_arrows, sticky_position, duration, arrow_start_time, is_sticky, turn_duration)
+            frame = animate_arrow_approach(frame, current_arrow, current_time, sticky_arrows, sticky_position, duration, arrow_start_time, is_sticky, turn_duration, direction_string)
 
             # Write the frame to the output video
             out.write(frame)
@@ -786,6 +1287,138 @@ def arrow_attachment_main(file_name, master):
     except Exception as e:
         logging.info('Error in Arrow attachment')
         logging.info(e)
+        try:
+            update_route_field(route_id, 'processStatus', 'ARROW_ATTACHMENT_ERROR')
+        except Exception as e:
+            logging.info('Error while updating DB')
+
+def arrow_attachment_main(file_name, master):
+    try: 
+        # Load the video
+        cap = cv2.VideoCapture(f'blurred/{file_name}')
+        # Get video properties
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+        print(f'frame_width => {frame_width}')
+        print(f'frame_height => {frame_height}')
+        # Define the codec and create VideoWriter object to save the output video
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        out = cv2.VideoWriter(f'final/{file_name}', fourcc, fps, (frame_width, frame_height))
+
+        arrows = []
+        for el in master:
+            icon = get_direction_icon(el['direction'])
+            has_sticky = False
+            fadeout = False
+            if el.get('fadeout') == True:
+                print('fadeout true --- ')
+                fadeout = True
+            if el.get('sticky') == True:
+                has_sticky = True
+            arrows.append((el['start'], el['end'], icon, has_sticky, el['direction'], fadeout))
+        
+        
+        # Define sticky arrows
+        # sticky_arrows = [arrow_left, arrow_right]  # Add your sticky arrow images here
+        sticky_arrows = []
+        # sticky_position = (frame_width // 2, int(frame_height * 0.7))  # Fixed position for sticky arrows
+        sticky_position = (frame_width * 0.5, int(frame_height // 2))  # Fixed position for sticky arrows
+
+        # Process the video frame by frame
+        frame_number = 0
+        current_arrow = None
+        arrow_start_time = 0  # Tracks when the current arrow starts
+        duration = 3  # Duration for each arrow approach effect (3 seconds)
+        turn_duration = 3
+
+        # Add a flag to track if the arrow image changed
+        arrow_changed = False
+        prev_direction = None
+        prev_sticky = None
+        prev_fadeout = None
+
+        prev_start_time = None
+        prev_end_time = None
+        while cap.isOpened():
+            # print(f'frame_number => {frame_number}')
+            # logging.info(f'frame process => {frame_number}')
+            ret, frame = cap.read()
+            if not ret:
+                break
+            # Get the current time in seconds
+            current_time = frame_number / fps
+
+            # Determine which arrow to display based on the time intervals
+            new_arrow = None
+            is_sticky = False
+            direction_string = None
+            current_start_time = None
+            current_end_time = None
+            current_fade_out = None
+            for start_time, end_time, arrow_image, sticky, direction_name, fadeout in arrows:
+                if start_time <= current_time < end_time:
+                    current_start_time = start_time
+                    current_end_time = end_time
+                    new_arrow = arrow_image
+                    direction_string = direction_name
+                    current_fade_out = fadeout
+                    if direction_name == 'left' or direction_name == 'right' or direction_name == 'slight left' or direction_name == 'slight right': 
+                        turn_duration = end_time - start_time
+                        duration = end_time - start_time
+                    if sticky == True:
+                        is_sticky = True
+                    if direction_name == 'straight': 
+                        duration = 3
+                    break
+            # If the arrow changes, reset the animation
+            if new_arrow is not None:
+                if current_arrow is None or not np.array_equal(current_arrow, new_arrow) or (prev_direction != None and prev_sticky != None and (prev_sticky != is_sticky or prev_direction != direction_string)) or (current_start_time != prev_start_time):
+                    current_arrow = new_arrow
+                    arrow_start_time = current_time  # Reset animation start time
+                    arrow_changed = True  # Mark that the arrow has changed
+                else:
+                    arrow_changed = False  # No change in arrow
+            # If there's no valid arrow, continue without overlay
+            if current_arrow is None:
+                prev_direction = direction_string
+                prev_sticky = is_sticky
+                prev_start_time = current_start_time
+                prev_end_time = current_end_time
+                out.write(frame)
+                frame_number += 1
+                continue
+
+            # Reset animation cycle if current animation completes (Only applicable for straight arrow)
+            if (current_time - arrow_start_time) >= duration:
+                if direction_string != None and direction_string == 'straight':
+                    arrow_start_time = current_time  # Reset the animation cycle for continuous movement
+            
+            # Animate the current arrow (reset if changed, continue if not)
+            frame = animate_arrow_approach(frame, current_arrow, current_time, sticky_arrows, sticky_position, duration, arrow_start_time, is_sticky, turn_duration, direction_string, current_fade_out)
+
+            # Write the frame to the output video
+            out.write(frame)
+            
+            # Display the video frame (optional)
+            # cv2.imshow('Video with Arrows', frame)
+            
+            # # Break the loop on 'q' key press
+            # if cv2.waitKey(1) & 0xFF == ord('q'):
+            #     break
+            prev_direction = direction_string
+            prev_sticky = is_sticky
+            prev_start_time = current_start_time
+            prev_end_time = current_end_time
+            frame_number += 1
+
+        # Release resources
+        cap.release()
+        out.release()
+    except Exception as e:
+        logging.info('Error in Arrow attachment')
+        print(e)
         try:
             update_route_field(route_id, 'processStatus', 'ARROW_ATTACHMENT_ERROR')
         except Exception as e:
@@ -853,9 +1486,100 @@ def overlay_arrow(frame, arrow_image, position, scale=1.0, opacity=1.0):
         return e
 
 
-# Assuming other variables (like current_time, sticky_arrows, etc.) are defined elsewhere in your code
+def animate_arrow_approach(frame, arrow_image, current_time, sticky_arrows, sticky_position, duration=2, arrow_start_time=0, is_sticky=False, turn_duration=3, direction_string = 'straight', fadeout = False):
+    """Animate arrow moving left with fade-in and fade-out effects over specified time durations."""
+    if arrow_image is None:
+        return frame
 
-def animate_arrow_approach(frame, arrow_image, current_time, sticky_arrows, sticky_position, duration=2, arrow_start_time=0, is_sticky = False, turn_duration = 3):
+    # Check if the arrow is sticky
+    if False:  # Placeholder, adjust if sticky logic is needed
+        scale = 0.4  # Sticky scale
+        current_position = sticky_position  # Sticky position
+        opacity_progress = 1.0  # Fully opaque for sticky arrows
+    else:
+        # Define start and end scale values (moderate scaling)
+        start_scale = 0.2  # Arrow appears smaller (far away)
+        end_scale = 0.6   # Arrow appears at a reasonable size (closer)
+        elapsed_time = current_time - arrow_start_time  # Time since the arrow started
+
+        progress = min(1.0, elapsed_time / duration)  # Progress capped at 1.0
+        
+        height, width, _ = frame.shape
+        
+        if is_sticky:
+            start_scale = 0.6  # Sticky scale (no change in scale)
+            end_scale = 0.6
+            if direction_string == 'slight left':
+                start_position = (int(width // 2), int(height * 0.7))
+                end_position = (int(width // 2), int(height * 0.7))
+            elif direction_string == 'slight right':
+                start_position = (int(width // 2), int(height * 0.7))
+                end_position = (int(width // 2), int(height * 0.7))
+            elif any(np.array_equal(arrow_image, lft_arrow) for lft_arrow in left_turns):
+                # Left turns
+                start_position = (int(width // 2), int(height * 0.4))
+                end_position = (int(width // 2), int(height * 0.8))
+            elif any(np.array_equal(arrow_image, rht_arrow) for rht_arrow in right_turns):
+                # Right turns
+                start_position = (int(width // 2), int(height * 0.4))
+                end_position = (int(width // 2), int(height * 0.8))
+        else:
+            # Define start and end positions for non-sticky arrows
+            if direction_string == 'slight left' or direction_string == 'slight right':
+                # Slight left/right turns
+                if direction_string == 'slight left':
+                    start_position = (int(width * 0.3), int(height * 0.6))
+                    end_position = (int(width * 0.9), int(height * 0.9))
+                elif direction_string == 'slight right':
+                    start_position = (int(width * 0.9), int(height * 0.6))
+                    end_position = (int(width * 0.3), int(height * 0.9))
+            elif any(np.array_equal(arrow_image, lft_arrow) for lft_arrow in left_turns):
+                start_position = (int(width * 0.1), int(height * 0.7))  
+                end_position = (int(width + 50), int(height * 0.7))  
+            elif any(np.array_equal(arrow_image, rht_arrow) for rht_arrow in right_turns):
+                start_position = (int(width * 1), int(height * 0.7))  
+                end_position = (-100, int(height * 0.7))  
+            else:
+                start_position = (int(width * 0.5), int(height * 0.7)) 
+                end_position = (int(width * 0.5), height + 100)
+
+        # Interpolate scale and position based on progress
+        scale = start_scale + (end_scale - start_scale) * progress
+        current_position = (
+            int(start_position[0] + (end_position[0] - start_position[0]) * progress),
+            int(start_position[1] + (end_position[1] - start_position[1]) * progress)
+        )
+
+        opacity_progress = None
+        if direction_string == "straight" or fadeout == False: 
+            # Fade-in effect: adjust opacity based on time (first 0.6 seconds of the arrow's animation)
+            fade_in_duration = 0.6  # Fade-in period (0.6 seconds)
+            if elapsed_time < fade_in_duration:  # Only fade during the first 0.6 seconds
+                opacity_progress = elapsed_time / fade_in_duration  # Opacity increases from 0 to 1
+            else:
+                opacity_progress = 1.0  # After 0.6 seconds, the arrow is fully opaque
+        else:
+            # Fade-in effect (first 0.6 seconds)
+            fade_in_duration = max(turn_duration-1, 1)  # Fade-in period (0.6 seconds)s
+            # if elapsed_time < fade_in_duration:
+            #     opacity_progress = elapsed_time / fade_in_duration  # Opacity increases from 0 to 1
+            # else:
+            # Fade-out effect (after the fade-in, the arrow will fade out)
+            remaining_time = current_time - (arrow_start_time + fade_in_duration)  # Time after fade-in period
+            fade_out_duration = turn_duration - fade_in_duration  # Total duration for fade-out
+            if remaining_time < fade_out_duration:
+                opacity_progress = 1 - (remaining_time / fade_out_duration)  # Opacity decreases from 1 to 0
+            else:
+                opacity_progress = 0  # Fully transparent after fade-out duration
+
+    # Overlay the arrow on the frame with calculated scale, position, and opacity
+    frame = overlay_arrow(frame, arrow_image, current_position, scale=scale, opacity=opacity_progress)
+    
+    return frame
+
+
+# Assuming other variables (like current_time, sticky_arrows, etc.) are defined elsewhere in your code
+def animate_arrow_approach_v3(frame, arrow_image, current_time, sticky_arrows, sticky_position, duration=2, arrow_start_time=0, is_sticky = False, turn_duration = 3):
     """Animate arrow moving left with fade-in effect over the first 0.6 seconds, reset position on switch."""
     if arrow_image is None:
         return frame
@@ -1020,7 +1744,7 @@ def animate_arrow_approach_v1(frame, arrow_image, current_time, sticky_arrows, s
 if __name__ == '__main__':
     try:
         logging.info('Starting the script')
-        arrow_attachment_main('Staples.mov', master)
+        arrow_attachment_main('mia_test_dim.mp4', master)
     except Exception as e:
         logging.info('Error while starting server')
         logging.info(e)
