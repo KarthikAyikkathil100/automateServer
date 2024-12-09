@@ -272,13 +272,78 @@ def textBlurJob(data, route_data):
 
 @app.route('/check-health')
 def cpuCheck():
-    return "[Updated] Server says hii", 200
+    return "[Updated again] Server says hii", 200
     # avg_cpu = get_average_cpu_utilization(interval=1, times=2)
     # logging.info(f'Average CPU => {avg_cpu}')
     # if avg_cpu > 80:
     #     return "", 500
     # else:    
     #     return "", 200
+
+@app.route('/face-blur', methods = ['POST'])
+def faceBlurAPI():
+    route_id = None
+    data = request.get_json()
+    try:
+        route_id = data['route_id']
+        route_data = get_route_data(route_id)
+        if route_data == None:
+            data = {
+                "message": "Route not found"
+            }
+            return jsonify(data), 404
+        thread = threading.Thread(target=faceBlurJob, args=(data, route_data))
+        thread.daemon = True  # This ensures the thread will be killed when the main program exits
+        thread.start()
+        res_data = {
+            "message": "Route submitted for text-blur process"
+        }
+        return jsonify(res_data), 200 
+    except Exception as e:
+        print('Error in face blur')
+        print(e)
+        update_route_field(route_id, 'processStatus', 'FACE_BLUR_ERROR')
+        return "Error while processing json file", 500
+
+
+
+def faceBlurJob(data, route_data):
+    route_id = None
+    file_name = None
+    try:
+
+        route_id = data['route_id']
+        blur = data.get('blur')
+        # file_name = data['file_name']
+        direction_detect = data.get('direction_detect')
+        arrow_attachment = data.get('arrow_attachment')
+
+        # Need to run blur script, direction detection script and submit to route DB
+        # 1) Download the video from s3 and save in local
+        logging.info('Blurring start')
+        update_route_field(route_id, 'processStatus', 'FACE_BLUR_START')
+        video_url = route_data['videoURL']
+        file_name = video_url.split('/')[-1]
+        download_video_from_s3('media.demo.test', f'{file_name}', f'inputs/{file_name}')
+
+        # 2) Blur the video
+        blurVideo(file_name)
+        logging.info('blur complete')
+
+        # 3) Upload blurred video to S3
+        upload_video_to_s3(f'blurred/{file_name}', bucket_name)
+
+        update_route_field(route_id, 'processStatus', 'FACE_BLUR_SUCCESS')
+    except Exception as e:
+        update_route_field(route_id, 'processStatus', 'FACE_BLUR_ERROR')
+        print(e)
+    finally:
+        try:
+            os.remove(f'blurred/{file_name}')
+        except Exception as e:
+            print('Error while removing blurred file from local')
+
+
 
 # The expected body of the request
 # {'route_id': '', 'blur': '', 'direction_detect': True/False, 'arrow_attachment': True/False, 'file_name': ''}

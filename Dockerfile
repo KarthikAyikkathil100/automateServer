@@ -26,7 +26,7 @@ COPY blur_automate.py .
 COPY sliding_window.py .
 COPY arrow_attachment.py .
 COPY helpers.py .
-COPY text_blur.py
+COPY text_blur.py .
 COPY images/ ./images/
 
 # Verify the installation
