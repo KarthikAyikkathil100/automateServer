@@ -1510,28 +1510,28 @@ def animate_arrow_approach(frame, arrow_image, current_time, sticky_arrows, stic
             start_scale = 0.6  # Sticky scale (no change in scale)
             end_scale = 0.6
             if direction_string == 'slight left':
-                start_position = (int(width // 2), int(height * 0.7))
-                end_position = (int(width // 2), int(height * 0.7))
+                start_position = (int(width // 2), int(height * 0.8))
+                end_position = (int(width // 2), int(height * 0.8))
             elif direction_string == 'slight right':
-                start_position = (int(width // 2), int(height * 0.7))
-                end_position = (int(width // 2), int(height * 0.7))
+                start_position = (int(width // 2), int(height * 0.8))
+                end_position = (int(width // 2), int(height * 0.8))
             elif any(np.array_equal(arrow_image, lft_arrow) for lft_arrow in left_turns):
                 # Left turns
-                start_position = (int(width // 2), int(height * 0.4))
+                start_position = (int(width // 2), int(height * 0.5))
                 end_position = (int(width // 2), int(height * 0.8))
             elif any(np.array_equal(arrow_image, rht_arrow) for rht_arrow in right_turns):
                 # Right turns
-                start_position = (int(width // 2), int(height * 0.4))
+                start_position = (int(width // 2), int(height * 0.5))
                 end_position = (int(width // 2), int(height * 0.8))
         else:
             # Define start and end positions for non-sticky arrows
             if direction_string == 'slight left' or direction_string == 'slight right':
                 # Slight left/right turns
                 if direction_string == 'slight left':
-                    start_position = (int(width * 0.3), int(height * 0.6))
+                    start_position = (int(width * 0.3), int(height * 0.7))
                     end_position = (int(width * 0.9), int(height * 0.9))
                 elif direction_string == 'slight right':
-                    start_position = (int(width * 0.9), int(height * 0.6))
+                    start_position = (int(width * 0.9), int(height * 0.7))
                     end_position = (int(width * 0.3), int(height * 0.9))
             elif any(np.array_equal(arrow_image, lft_arrow) for lft_arrow in left_turns):
                 start_position = (int(width * 0.1), int(height * 0.7))  
@@ -1540,7 +1540,7 @@ def animate_arrow_approach(frame, arrow_image, current_time, sticky_arrows, stic
                 start_position = (int(width * 1), int(height * 0.7))  
                 end_position = (-100, int(height * 0.7))  
             else:
-                start_position = (int(width * 0.5), int(height * 0.7)) 
+                start_position = (int(width * 0.5), int(height * 0.8)) 
                 end_position = (int(width * 0.5), height + 100)
 
         # Interpolate scale and position based on progress
