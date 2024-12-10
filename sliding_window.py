@@ -116,15 +116,16 @@ def sliding_window_main(master, file_name, fps, total_frames):
     try:
         data = []
         for item in master:
-            if item != None:
+            if item != None and len(item) > 0:
                 data.extend(item['data'])
         finalData = sliding_window(data, fps)
         
         outputData = process_sliding_window_output(finalData)
-        
+        # with open(f'multithread-res/{file_name}.txt', 'w', encoding='utf-8') as f:
+        #     json.dump({'data': outputData}, f)
         prev = None
         straightStubData = []
-        if (outputData[0])['direction'] != 'straight':
+        if (outputData[0])['direction'] != 'straight' and (outputData[0])['start'] != 0:
             straightStubData.append({
                 'direction': 'straight',
                 'start': 0,
@@ -172,13 +173,13 @@ def sliding_window_main(master, file_name, fps, total_frames):
                 # 'startFormat': format_seconds(0),
                 # 'endFormat': format_seconds(straightStubData[0]['start']),
             })
-        finalDataRes = adjustTime(straightStubData)
-        if finalDataRes == None:
-            return None
+        # finalDataRes = adjustTime(straightStubData)
+        # if finalDataRes == None:
+        #     return None
         with open(f'multithread-res/{file_name}.txt', 'w', encoding='utf-8') as f:
             json.dump({'data': straightStubData}, f)
         print('File write done!!')
-        return finalDataRes
+        return straightStubData
     except Exception as e:
         print('Error in sliding_window_main')
         print(e)
