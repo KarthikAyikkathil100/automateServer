@@ -199,8 +199,8 @@ def directionDetection(file_name):
         # logging.info('Direction data written to direction_data.json')
         # logging.info('Done')
         end_time = datetime.now()
-        logging.info('StartTime => ', start_time)
-        logging.info('EndTime => ', end_time)
+        logging.info(f'StartTime => {start_time}')
+        logging.info(f'EndTime => , {end_time}')
 
         # logging.info('results -------')
         # logging.info(results)
@@ -221,5 +221,5 @@ def directionDetection(file_name):
             logging.info('Error while updatin Database')
 
 
-if __name__ == '__main__':
-    directionDetection('manoj.MOV')
+# if __name__ == '__main__':
+#     directionDetection('mia_test.mp4')

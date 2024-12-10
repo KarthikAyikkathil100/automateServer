@@ -344,6 +344,54 @@ def faceBlurJob(data, route_data):
             print('Error while removing blurred file from local')
 
 
+@app.route('/direction-detection', methods = ['POST'])
+def directionDetectionAPI():
+    route_id = None
+    data = request.get_json()
+    try:
+        route_id = data['route_id']
+        route_data = get_route_data(route_id)
+        if route_data == None:
+            data = {
+                "message": "Route not found"
+            }
+            return jsonify(data), 404
+        thread = threading.Thread(target=directionDetectionJob, args=(data, route_data))
+        thread.daemon = True  # This ensures the thread will be killed when the main program exits
+        thread.start()
+        res_data = {
+            "message": "Route submitted for direction-detection process"
+        }
+        return jsonify(res_data), 200 
+    except Exception as e:
+        print('Error in face blur')
+        print(e)
+        update_route_field(route_id, 'processStatus', 'DIRECTION_DETECTION_ERROR')
+        return "Error while processing json file", 500
+
+def directionDetectionJob(data, route_data):
+    route_id = None
+    file_name = None
+    try:
+        route_id = route_data['id']
+        video_url = route_data['videoURL']
+        file_name = video_url.split('/')[-1]
+        download_video_from_s3('media.demo.test', f'{file_name}', f'blurred/{file_name}')
+        logging.info('Starting the direction detection')
+        final_directions = directionDetection(file_name)
+        # Store these directions in dynamo table
+        store_detected_directions(final_directions, route_id)
+        update_route_field(route_id, 'processStatus', 'DIRECTION_DETECTION_SUCCESS')
+        logging.info('Done :+1')
+    except Exception as e:
+        update_route_field(route_id, 'processStatus', 'DIRECTION_DETECTION_ERROR')
+        print(e)
+    finally:
+        try:
+            os.remove(f'blurred/{file_name}')
+        except Exception as e:
+            print('Error while removing blurred file from local')
+
 
 # The expected body of the request
 # {'route_id': '', 'blur': '', 'direction_detect': True/False, 'arrow_attachment': True/False, 'file_name': ''}
