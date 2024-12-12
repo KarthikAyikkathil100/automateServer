@@ -73,7 +73,7 @@ def get_verdict(data: List[Dict[str, Any]]) -> Dict[str, Any]:
 
     return {'verdict': verdict, 'directionCounts': direction_counts, 'timeGap': time_gap}
 
-def process_verdict(data: List[Dict[str, Any]], verdict_meta: Dict[str, Any]):
+def process_verdict_old(data: List[Dict[str, Any]], verdict_meta: Dict[str, Any]):
     if check_time_validity(data[0]['timestamp']):
         seconds = data[0]['timestamp']
         target_min = seconds // 60
@@ -86,13 +86,23 @@ def process_verdict(data: List[Dict[str, Any]], verdict_meta: Dict[str, Any]):
     else:
         return None
 
+def process_verdict(data: List[Dict[str, Any]], verdict_meta: Dict[str, Any]):
+    seconds = data[0]['timestamp']
+    target_min = seconds // 60
+    target_sec = seconds % 60
+    return {
+        'direction': verdict_meta.get('verdict'),
+        'seconds': seconds,
+        'format': f"{target_min} min {target_sec} sec",
+    }
+
 def format_seconds(seconds: int) -> str:
     target_min = seconds // 60
     target_sec = seconds % 60
     return f"{target_min} min {target_sec} sec"
 
 def check_time_validity(time: int) -> bool:
-    print(finalData)
+    print(f'finalData => {finalData}')
     return not any(el['directionTime'] == time for el in finalData)
 
 def sliding_window(data, fps):
@@ -102,7 +112,7 @@ def sliding_window(data, fps):
         for chunk in chunks:
             verdict_meta = get_verdict(chunk)
             if verdict_meta.get('verdict'):
-                pv = process_verdict(chunk, verdict_meta)
+                pv = process_verdict(chunk, verdict_meta) # TODO: We need to pass finalData as 3rd parameter
                 # print('pv')
                 # print(pv)
                 if pv != None:
@@ -119,10 +129,10 @@ def sliding_window_main(master, file_name, fps, total_frames):
             if item != None and len(item) > 0:
                 data.extend(item['data'])
         finalData = sliding_window(data, fps)
+        with open(f'multithread-res/{file_name}.txt', 'w', encoding='utf-8') as f:
+            json.dump({'data': finalData}, f)
         
         outputData = process_sliding_window_output(finalData)
-        # with open(f'multithread-res/{file_name}.txt', 'w', encoding='utf-8') as f:
-        #     json.dump({'data': outputData}, f)
         prev = None
         straightStubData = []
         if (outputData[0])['direction'] != 'straight' and (outputData[0])['start'] != 0:
@@ -153,7 +163,7 @@ def sliding_window_main(master, file_name, fps, total_frames):
                     straightStubData.append(el)
             prev = el
         
-        last_second_in_video = int(total_frames/fps)
+        last_second_in_video = round(total_frames/fps)
         if (straightStubData[-1])['end'] != last_second_in_video:
             straightStubData.append({
                 'direction': 'straight',
@@ -250,43 +260,55 @@ def process_sliding_window_output(data):
 
         direction_data = [el for el in data if el['direction'] != directionTypes['STRAIGHT']]
         
-        if direction_data == None:
-            direction_data = []
-
-        for current in direction_data:
-            if current_group_lead is None:
-                make_new_group_lead(current)
-                continue
-
-            if check_same_group(current_group_lead, current):
-                group.append(current)
-            else:
-                if group:
-                    grouped_data.append(group)
-                clear()
-                make_new_group_lead(current)
-
-        if group:
-            grouped_data.append(group)
-            clear()
-
-        for group in grouped_data:
-            start = group[0]['seconds']
-            end = group[-1]['seconds'] + 1 if len(group) > 1 else start + 1
+        if len(direction_data) == 0 and len(data) > 0:
+            # This will be the case when all the direction are straight
             final_data.append({
-                'start': int(start),
-                'end': int(end),
-                'direction': group[0]['direction'],
-                'message': get_direction_mesage(group[0]['direction']),
+                'start': round(((data[0])['seconds'])),
+                'end': round(((data[-1])['seconds'])),
+                'direction': directionTypes['STRAIGHT'],
+                'message': get_direction_mesage(directionTypes['STRAIGHT']),
                 # 'startFormat': format_seconds(int(start)),
                 # 'endFormat': format_seconds(int(end)),
             })
-        print('finall!!!!')
-        print(final_data)
+        else:
+            if direction_data == None:
+                direction_data = []
+
+            for current in direction_data:
+                if current_group_lead is None:
+                    make_new_group_lead(current)
+                    continue
+
+                if check_same_group(current_group_lead, current):
+                    group.append(current)
+                else:
+                    if group:
+                        grouped_data.append(group)
+                    clear()
+                    make_new_group_lead(current)
+
+            if group:
+                grouped_data.append(group)
+                clear()
+
+            for group in grouped_data:
+                start = group[0]['seconds']
+                end = group[-1]['seconds'] + 1 if len(group) > 1 else start + 1
+                final_data.append({
+                    'start': round(start),
+                    'end': round(end),
+                    'direction': group[0]['direction'],
+                    'message': get_direction_mesage(group[0]['direction']),
+                    # 'startFormat': format_seconds(int(start)),
+                    # 'endFormat': format_seconds(int(end)),
+                })
+            print('finall!!!!')
+            print(final_data)
         return final_data
     except Exception as e:
         print('Error while processing sliding window output')
         print(e)
+        return None
 
 
 def get_direction_mesage(direction):

@@ -114,52 +114,54 @@ def testPost():
             print('Error removing file')
 
 
-@app.route('/test/direction-change', methods = ['POST'])
-def processArrowStick():
-    route_id = None
+@app.route('/arrow-attach', methods=['POST'])
+def arrowAttachAPI():
     file_name = None
+    route_id = None
     try:
-        logging.info('Arrow attachment part')
         data = request.get_json()
         route_id = data['route_id']
         route_data = get_route_data(route_id)
         if route_data == None:
-            logging.info('Route not found')
-            res_dat = {
-                'error': True,
-                'message': 'Route not found'
+            data = {
+                "message": "Route not found"
             }
-            return jsonify(res_dat), 404
+            return jsonify(data), 404 
+        thread = threading.Thread(target=arrowAttachJob, args=(data, route_data))
+        thread.daemon = True  # This ensures the thread will be killed when the main program exits
+        thread.start()
+        res_data = {
+            "message": "Route submitted for arrow-attach process"
+        }
+        return jsonify(res_data), 200 
+    except Exception as e:
+        update_route_field(route_id, 'processStatus', 'TEXT_BLUR_ERROR')
+        print('Error in text blur')
+        print(e)
+        return "Error while processing json file", 500
 
+def arrowAttachJob(data, route_data):
+    route_id = None
+    file_name = None
+    try:
+        route_id = route_data['id']
         update_route_field(route_id, 'processStatus', 'ARROW_ATTACHMENT_START')
         video_url = route_data.get('videoURL')
-        if video_url == None:
-            update_route_field(route_id, 'processStatus', 'ARROW_ATTACHMENT_ERROR')
-            res_dat = {
-                'error': True,
-                'message': 'Route video not found'
-            }
-            return jsonify(res_dat), 404
         file_name = video_url.split('/')[-1]
         logging.info('download of video started')
         download_video_from_s3('media.demo.test', f'{file_name}', f'blurred/{file_name}')
         logging.info('download done')
         final_directions = route_data.get('detectedDirections')
-        if final_directions == None:
-            logging.info('no directions found')
-            update_route_field(route_id, 'processStatus', 'ARROW_ATTACHMENT_ERROR')
-            res_dat = {
-                'error': True,
-                'message': 'Direction data not found'
-            }
-            return jsonify(res_dat), 404    
         logging.info('Arrow attachment start')
         arrow_attachment_main(file_name, final_directions)
+
+        logging.info('part 1 done ----')
 
         # Change the video codec for making the video small in size
         # ffmpeg -i input.mp4 -c:v libx264 -c:a copy output_h264.mp4
         change_codec_command = ["ffmpeg", "-i", f'final/{file_name}', '-c:v', 'libx264', '-c:a', 'copy', f'final/codec_{file_name}']
         result_dim = subprocess.run(change_codec_command, check=True, capture_output=True, text=True)
+        logging.info('part 2 done ----')
         logging.info("Command Output codec:", result_dim.stdout)
         logging.info("Command Error Output codec:", result_dim.stderr)
 
@@ -168,24 +170,12 @@ def processArrowStick():
         upload_video_to_s3(f'final/codec_{file_name}', bucket_name, new_file_name)
         update_route_field(route_id, 'processedVideoURL', new_link)
         update_route_field(route_id, 'processStatus', 'ARROW_ATTACHMENT_SUCCESS')
-
-        res_dat = {
-            'error': False,
-            'message': 'Arrow attachment done'
-        }
-        return jsonify(res_dat), 200
     except Exception as e:
         logging.info('Error while processing arrow attachment')
         try:
             update_route_field(route_id, 'processStatus', 'ARROW_ATTACHMENT_ERROR')
         except:
             logging.info('Error while updating DB')
-        
-        res_dat = {
-            'error': True,
-            'message': 'Error while processing'
-        }
-        return jsonify(res_dat), 200
     finally:
         try:
             os.remove(f'final/{file_name}')
@@ -195,6 +185,90 @@ def processArrowStick():
             os.remove(f'final/codec_{file_name}')
         except Exception as e:
             print('Error removing file')
+
+
+
+# @app.route('/test/direction-change', methods = ['POST'])
+# def processArrowStick():
+#     route_id = None
+#     file_name = None
+#     try:
+#         logging.info('Arrow attachment part')
+#         data = request.get_json()
+#         route_id = data['route_id']
+#         route_data = get_route_data(route_id)
+#         if route_data == None:
+#             logging.info('Route not found')
+#             res_dat = {
+#                 'error': True,
+#                 'message': 'Route not found'
+#             }
+#             return jsonify(res_dat), 404
+
+#         update_route_field(route_id, 'processStatus', 'ARROW_ATTACHMENT_START')
+#         video_url = route_data.get('videoURL')
+#         if video_url == None:
+#             update_route_field(route_id, 'processStatus', 'ARROW_ATTACHMENT_ERROR')
+#             res_dat = {
+#                 'error': True,
+#                 'message': 'Route video not found'
+#             }
+#             return jsonify(res_dat), 404
+#         file_name = video_url.split('/')[-1]
+#         logging.info('download of video started')
+#         download_video_from_s3('media.demo.test', f'{file_name}', f'blurred/{file_name}')
+#         logging.info('download done')
+#         final_directions = route_data.get('detectedDirections')
+#         if final_directions == None:
+#             logging.info('no directions found')
+#             update_route_field(route_id, 'processStatus', 'ARROW_ATTACHMENT_ERROR')
+#             res_dat = {
+#                 'error': True,
+#                 'message': 'Direction data not found'
+#             }
+#             return jsonify(res_dat), 404    
+#         logging.info('Arrow attachment start')
+#         arrow_attachment_main(file_name, final_directions)
+
+#         # Change the video codec for making the video small in size
+#         # ffmpeg -i input.mp4 -c:v libx264 -c:a copy output_h264.mp4
+#         change_codec_command = ["ffmpeg", "-i", f'final/{file_name}', '-c:v', 'libx264', '-c:a', 'copy', f'final/codec_{file_name}']
+#         result_dim = subprocess.run(change_codec_command, check=True, capture_output=True, text=True)
+#         logging.info("Command Output codec:", result_dim.stdout)
+#         logging.info("Command Error Output codec:", result_dim.stderr)
+
+#         new_file_name = f'new_{file_name}'
+#         new_link = f'https://s3.ap-south-1.amazonaws.com/media.demo.test/{new_file_name}'
+#         upload_video_to_s3(f'final/codec_{file_name}', bucket_name, new_file_name)
+#         update_route_field(route_id, 'processedVideoURL', new_link)
+#         update_route_field(route_id, 'processStatus', 'ARROW_ATTACHMENT_SUCCESS')
+
+#         res_dat = {
+#             'error': False,
+#             'message': 'Arrow attachment done'
+#         }
+#         return jsonify(res_dat), 200
+#     except Exception as e:
+#         logging.info('Error while processing arrow attachment')
+#         try:
+#             update_route_field(route_id, 'processStatus', 'ARROW_ATTACHMENT_ERROR')
+#         except:
+#             logging.info('Error while updating DB')
+        
+#         res_dat = {
+#             'error': True,
+#             'message': 'Error while processing'
+#         }
+#         return jsonify(res_dat), 200
+#     finally:
+#         try:
+#             os.remove(f'final/{file_name}')
+#         except Exception as e:
+#             print('Error removing file')
+#         try:
+#             os.remove(f'final/codec_{file_name}')
+#         except Exception as e:
+#             print('Error removing file')
     
 
 @app.route('/test/text-blur', methods=['POST'])
@@ -272,7 +346,7 @@ def textBlurJob(data, route_data):
 
 @app.route('/check-health')
 def cpuCheck():
-    return "[Updated again] Server says hii", 200
+    return "[Updated again 3] Server says hii", 200
     # avg_cpu = get_average_cpu_utilization(interval=1, times=2)
     # logging.info(f'Average CPU => {avg_cpu}')
     # if avg_cpu > 80:
@@ -374,13 +448,17 @@ def directionDetectionJob(data, route_data):
     file_name = None
     try:
         route_id = route_data['id']
+        print(f'route_id => {route_id}')
         video_url = route_data['videoURL']
         file_name = video_url.split('/')[-1]
         download_video_from_s3('media.demo.test', f'{file_name}', f'blurred/{file_name}')
         logging.info('Starting the direction detection')
         final_directions = directionDetection(file_name)
+        print('from API == ')
+        print(final_directions)
         # Store these directions in dynamo table
         store_detected_directions(final_directions, route_id)
+        print('done')
         update_route_field(route_id, 'processStatus', 'DIRECTION_DETECTION_SUCCESS')
         logging.info('Done :+1')
     except Exception as e:

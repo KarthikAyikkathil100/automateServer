@@ -40,6 +40,7 @@ def store_detected_directions(data, key):
         )
         return True
     except Exception as e:
+        logging.info(e)
         logging.info('Error while storing detected directions in Dynamo DB')
         return None
 
