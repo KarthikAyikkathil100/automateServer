@@ -127,6 +127,7 @@ def arrowAttachAPI():
                 "message": "Route not found"
             }
             return jsonify(data), 404 
+        update_route_field(route_id, 'processStatus', 'ARROW_ATTACH_START')
         thread = threading.Thread(target=arrowAttachJob, args=(data, route_data))
         thread.daemon = True  # This ensures the thread will be killed when the main program exits
         thread.start()
@@ -135,8 +136,8 @@ def arrowAttachAPI():
         }
         return jsonify(res_data), 200 
     except Exception as e:
-        update_route_field(route_id, 'processStatus', 'TEXT_BLUR_ERROR')
-        print('Error in text blur')
+        update_route_field(route_id, 'processStatus', 'ARROW_ATTACH_ERROR')
+        print('Error in arrow attach fn')
         print(e)
         return "Error while processing json file", 500
 
@@ -291,6 +292,7 @@ def testTextBlur():
                 "message": "Route not found"
             }
             return jsonify(data), 404 
+        update_route_field(route_id, 'processStatus', 'TEXT_BLUR_START')
         thread = threading.Thread(target=textBlurJob, args=(data, route_data))
         thread.daemon = True  # This ensures the thread will be killed when the main program exits
         thread.start()
@@ -382,6 +384,7 @@ def faceBlurAPI():
                 "message": "Route not found"
             }
             return jsonify(data), 404
+        update_route_field(route_id, 'processStatus', 'FACE_BLUR_START')
         thread = threading.Thread(target=faceBlurJob, args=(data, route_data))
         thread.daemon = True  # This ensures the thread will be killed when the main program exits
         thread.start()
@@ -448,6 +451,7 @@ def directionDetectionAPI():
         print(route_data)
         if route_data == None:
             raise Exception('Route not found')
+        update_route_field(route_id, 'processStatus', 'DIRECTION_DETECTION_START')
         thread = threading.Thread(target=directionDetectionJob, args=(data, route_data))
         thread.daemon = True  # This ensures the thread will be killed when the main program exits
         thread.start()
