@@ -127,7 +127,7 @@ def arrowAttachAPI():
                 "message": "Route not found"
             }
             return jsonify(data), 404 
-        update_route_field(route_id, 'processStatus', 'ARROW_ATTACH_START')
+        update_route_field(route_id, 'processStatus', 'ARROW_ATTACHMENT_START')
         thread = threading.Thread(target=arrowAttachJob, args=(data, route_data))
         thread.daemon = True  # This ensures the thread will be killed when the main program exits
         thread.start()
@@ -136,7 +136,7 @@ def arrowAttachAPI():
         }
         return jsonify(res_data), 200 
     except Exception as e:
-        update_route_field(route_id, 'processStatus', 'ARROW_ATTACH_ERROR')
+        update_route_field(route_id, 'processStatus', 'ARROW_ATTACHMENT_ERROR')
         print('Error in arrow attach fn')
         print(e)
         return "Error while processing json file", 500
