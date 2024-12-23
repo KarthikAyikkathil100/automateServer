@@ -207,7 +207,7 @@ def directionDetection(file_name):
 
         finalOutput = sliding_window_main(results, file_name, fps, total_frames)
         if finalOutput == None:
-            return None
+            return False
         else:
             logging.info('finalOutput --')
             logging.info(finalOutput)
@@ -215,10 +215,7 @@ def directionDetection(file_name):
     except Exception as e:
         logging.info('Error in directionDetection fn')
         logging.info(e)
-        try:
-            update_route_field(route_id, 'processStatus', 'DIRECTION_DETECTION_ERROR')
-        except Exception as e:
-            logging.info('Error while updatin Database')
+        return False
 
 
 # if __name__ == '__main__':

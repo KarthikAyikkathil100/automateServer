@@ -54,6 +54,7 @@ def checkIfTurn(curr_turn_name, sharp_only = False):
 
 def processDirections(master):
     try:
+        master = preProcess(master)
         total_len = len(master)
         processedDirections = []
 
@@ -176,6 +177,48 @@ def processDirections(master):
     except Exception as e:
         print(e)
         return None
+
+def preProcess(data):
+    if len(data) == 0:
+        return data
+
+    if (data[0])['start'] != 0:
+        # add straight direction at start of video
+        data.insert(0, {
+           "direction": "straight",
+           "end": (data[0])['start'],
+           "message": "Go straight",
+           "start": 0
+        })
+        
+    # Change directions other than turns, straight to => straight
+    for index, el in enumerate(data):
+        if any( direction_name == el['direction'] for direction_name in all_turns) == False and el['direction'] != 'straight':
+            el['direction'] = 'straight'
+    
+    resData = []
+    # Fill gaps between directions with 'straight' direction
+    prev = None
+    for index, el in enumerate(data):
+        if index-1 >= 0:
+            prev = data[index-1]
+        
+        if prev == None:
+            resData.append(el)
+            continue
+        
+        if prev['end'] != el['start']:
+            resData.append({
+               "direction": "straight",
+               "end": el['start'],
+               "message": "Go straight",
+               "start": prev['end'],
+            })
+            resData.append(el)
+        
+        else:
+            resData.append(el)
+    return resData
 
 # Load arrow images
 def load_image(path):
@@ -641,24 +684,57 @@ def animate_arrow_approach(frame, arrow_image, current_time, sticky_arrows, stic
         else:
             # Fade-in effect (first 0.6 seconds)
             print('here -- C')
-            fade_in_duration = max(turn_duration-1, 1)  # Fade-in period (0.6 seconds)s
+            fade_in_duration = max(turn_duration-1, 1.0)  # Fade-in period (0.6 seconds)s
+            # fade_in_duration = 0.6
             print(f'fade_in_duration => {fade_in_duration}')
             print(f'fade_in_duration type => {type(fade_in_duration)}')
-            # if elapsed_time < fade_in_duration:
-            #     opacity_progress = elapsed_time / fade_in_duration  # Opacity increases from 0 to 1
-            # else:
-            # Fade-out effect (after the fade-in, the arrow will fade out)
-            remaining_time = current_time - (float(arrow_start_time) + float(fade_in_duration))  # Time after fade-in period
-            fade_out_duration = float(turn_duration) - float(fade_in_duration)  # Total duration for fade-out
-            if fade_out_duration == 0:
-                # This will be thee case when the turn duration is exactly 1 second
-                # So there won't be any time for the opacity-reduce animation
-                opacity_progress = 1 
+
+            ## With fade-in effect for turns
+            if elapsed_time < fade_in_duration:
+                print('debug:1')
+                if elapsed_time == 0:
+                    print('debug:1.1')
+                    opacity_progress = 0
+                else:    
+                    print('debug:1.2')
+                    # opacity_progress = float(elapsed_time) / float(fade_in_duration)  # Opacity increases from 0 to 1
+                    opacity_progress = 1
             else:
-                if remaining_time < fade_out_duration:
-                    opacity_progress = 1 - (float(remaining_time) / float(fade_out_duration))  # Opacity decreases from 1 to 0
+                print('debug:2')
+                # Fade-out effect (after the fade-in, the arrow will fade out)
+                remaining_time = current_time - (float(arrow_start_time) + float(fade_in_duration))  # Time after fade-in period
+                fade_out_duration = float(turn_duration) - float(fade_in_duration)  # Total duration for fade-out
+                if fade_out_duration == 0:
+                    print('debug:3')
+                    # This will be thee case when the turn duration is exactly 1 second
+                    # So there won't be any time for the opacity-reduce animation
+                    opacity_progress = 1 
                 else:
-                    opacity_progress = 0  # Fully transparent after fade-out duration
+                    print('debug:4')
+                    if remaining_time < fade_out_duration:
+                        print('debug:5')
+                        opacity_progress = 1 - (float(remaining_time) / float(fade_out_duration))  # Opacity decreases from 1 to 0
+                    else:
+                        opacity_progress = 0  # Fully transparent after fade-out duration
+
+
+            ## Without fade-in for turn arrows
+            # print('debug:2')
+            # # Fade-out effect (after the fade-in, the arrow will fade out)
+            # remaining_time = current_time - (float(arrow_start_time) + float(fade_in_duration))  # Time after fade-in period
+            # fade_out_duration = float(turn_duration) - float(fade_in_duration)  # Total duration for fade-out
+            # if fade_out_duration == 0:
+            #     print('debug:3')
+            #     # This will be thee case when the turn duration is exactly 1 second
+            #     # So there won't be any time for the opacity-reduce animation
+            #     opacity_progress = 1 
+            # else:
+            #     print('debug:4')
+            #     if remaining_time < fade_out_duration:
+            #         print('debug:5')
+            #         opacity_progress = 1 - (float(remaining_time) / float(fade_out_duration))  # Opacity decreases from 1 to 0
+            #     else:
+            #         opacity_progress = 0  # Fully transparent after fade-out duration
     print('Here -D')
     # Overlay the arrow on the frame with calculated scale, position, and opacity
     frame = overlay_arrow(frame, arrow_image, current_position, scale=scale, opacity=opacity_progress)
@@ -829,12 +905,12 @@ def animate_arrow_approach_v1(frame, arrow_image, current_time, sticky_arrows, s
 
 
 
-if __name__ == '__main__':
-    try:
-        logging.info('Starting the script')
-        arrow_attachment_main('Staples.mov', master)
-    except Exception as e:
-        logging.info('Error while starting server')
-        logging.info(e)
-else:
-    logging.info('not going in main')
+# if __name__ == '__main__':
+#     try:
+#         logging.info('Starting the script')
+#         arrow_attachment_main('Staples.mov', master)
+#     except Exception as e:
+#         logging.info('Error while starting server')
+#         logging.info(e)
+# else:
+#     logging.info('not going in main')

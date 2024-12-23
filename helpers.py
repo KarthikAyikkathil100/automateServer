@@ -61,7 +61,7 @@ def update_route_field(key, field, value):
         return True
     except Exception as e:
         logging.info('Error while storing detected directions in Dynamo DB')
-        return None
+        return False
 
 
 
@@ -96,14 +96,19 @@ def upload_video_to_s3(file_path, bucket_name, object_name=None):
         # Upload the file to S3
         s3.upload_file(file_path, bucket_name, object_name)
         logging.info(f"Upload Successful: {file_path} to {bucket_name}/{object_name}")
+        return True
     except FileNotFoundError:
         logging.info(f"Error: The file {file_path} was not found.")
+        return False
     except NoCredentialsError:
         logging.info("Error: No AWS credentials found.")
+        return False
     except PartialCredentialsError:
         logging.info("Error: Incomplete AWS credentials.")
+        return False
     except Exception as e:
         logging.info(f"Error uploading file: {e}")
+        return False
 
 def get_average_cpu_utilization(interval=1, times=5):
     cpu_usages = []

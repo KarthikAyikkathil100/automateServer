@@ -167,9 +167,16 @@ def arrowAttachJob(data, route_data):
 
         new_file_name = f'new_{file_name}'
         new_link = f'https://s3.ap-south-1.amazonaws.com/media.demo.test/{new_file_name}'
-        upload_video_to_s3(f'final/codec_{file_name}', bucket_name, new_file_name)
-        update_route_field(route_id, 'processedVideoURL', new_link)
-        update_route_field(route_id, 'processStatus', 'ARROW_ATTACHMENT_SUCCESS')
+        db_update_success = False
+        db_update_success = upload_video_to_s3(f'final/codec_{file_name}', bucket_name, new_file_name)
+        if db_update_success == False:
+            raise Exception('DB update error')
+        db_update_success = update_route_field(route_id, 'processedVideoURL', new_link)
+        if db_update_success == False:
+            raise Exception('DB update error')
+        db_update_success = update_route_field(route_id, 'processStatus', 'ARROW_ATTACHMENT_SUCCESS')
+        if db_update_success == False:
+            raise Exception('DB update error')
     except Exception as e:
         logging.info('Error while processing arrow attachment')
         try:
@@ -274,6 +281,7 @@ def arrowAttachJob(data, route_data):
 @app.route('/test/text-blur', methods=['POST'])
 def testTextBlur():
     file_name = None
+    route_id = None
     try:
         data = request.get_json()
         route_id = data['route_id']
@@ -299,43 +307,51 @@ def testTextBlur():
 
 
 def textBlurJob(data, route_data):
+    route_id = None
     try:
+        db_update_success = False
         route_id = data['route_id']
         # route_data = get_route_data(route_id)
         
         json_file_path = route_data['textBlurJsonFileName']
         if json_file_path == None:
-            update_route_field(route_id, 'processStatus', 'TEXT_BLUR_ERROR')
+            raise Exception('Text blur file not found')
             print('Text blur file not found')
-            return
         
         video_url = route_data.get('videoURL')
         if video_url == None:
-            update_route_field(route_id, 'processStatus', 'TEXT_BLUR_ERROR')
+            raise Exception('Route Video not found')
             print('Route Video not found')
-            return
         file_name = video_url.split('/')[-1]
         print('Started downloading the Video File to be processed')
-        download_video_from_s3('media.demo.test', f'{file_name}', f'inputs/{file_name}')
+        db_update_success = download_video_from_s3('media.demo.test', f'{file_name}', f'inputs/{file_name}')
+        if db_update_success == False:
+            raise Exception('Download failed')
 
         print('Started downloading the JSON File to be processed')
         # Download the Google's Video Intelligence text-blur output stored in the AWS-S3
         json_file_name = json_file_path.split('/')[-1]
-        download_video_from_s3('media.demo.test', json_file_path, f'text_json/{json_file_name}')
+        db_update_success = download_video_from_s3('media.demo.test', json_file_path, f'text_json/{json_file_name}')
+        if db_update_success == False:
+            raise Exception('DB update failed')
 
         # Start the text blur script
         blur_success = text_blur_main(file_name, json_file_name)
 
         if blur_success == False:
             print('Error while blurrig text')
-            update_route_field(route_id, 'processStatus', 'TEXT_BLUR_ERROR')
+            raise Exception('Error while blurrig text')
             return
         else:
             # Upload the text-blurred video to S3
-            upload_video_to_s3(f'final/{file_name}', 'media.demo.test')
+            db_update_success = upload_video_to_s3(f'final/{file_name}', 'media.demo.test')
+            if db_update_success == False:
+                raise Exception('DB update failed')
             # Remove file from local
             os.remove(f'final/{file_name}')
-            update_route_field(route_id, 'processStatus', 'TEXT_BLUR_SUCCESS')
+            db_update_success = update_route_field(route_id, 'processStatus', 'TEXT_BLUR_SUCCESS')
+            if db_update_success == False:
+                raise Exception('DB update failed')
             return
     except Exception as e:
         update_route_field(route_id, 'processStatus', 'TEXT_BLUR_ERROR')
@@ -385,27 +401,30 @@ def faceBlurJob(data, route_data):
     route_id = None
     file_name = None
     try:
-
         route_id = data['route_id']
         blur = data.get('blur')
-        # file_name = data['file_name']
-        direction_detect = data.get('direction_detect')
-        arrow_attachment = data.get('arrow_attachment')
+        update_field_success = False
 
         # Need to run blur script, direction detection script and submit to route DB
         # 1) Download the video from s3 and save in local
         logging.info('Blurring start')
-        update_route_field(route_id, 'processStatus', 'FACE_BLUR_START')
+        update_field_success = update_route_field(route_id, 'processStatus', 'FACE_BLUR_START')
+        if update_field_success == False:
+            raise Exception('Update DB failed')
         video_url = route_data['videoURL']
         file_name = video_url.split('/')[-1]
-        download_video_from_s3('media.demo.test', f'{file_name}', f'inputs/{file_name}')
+        download_success = download_video_from_s3('media.demo.test', f'{file_name}', f'inputs/{file_name}')
+        if download_success == False:
+            raise Exception('download failed')
 
         # 2) Blur the video
         blurVideo(file_name)
         logging.info('blur complete')
 
         # 3) Upload blurred video to S3
-        upload_video_to_s3(f'blurred/{file_name}', bucket_name)
+        update_field_success = upload_video_to_s3(f'blurred/{file_name}', bucket_name)
+        if update_field_success == False:
+            raise Exception('Update DB failed')
 
         update_route_field(route_id, 'processStatus', 'FACE_BLUR_SUCCESS')
     except Exception as e:
@@ -425,11 +444,10 @@ def directionDetectionAPI():
     try:
         route_id = data['route_id']
         route_data = get_route_data(route_id)
+        print('route_data ==')
+        print(route_data)
         if route_data == None:
-            data = {
-                "message": "Route not found"
-            }
-            return jsonify(data), 404
+            raise Exception('Route not found')
         thread = threading.Thread(target=directionDetectionJob, args=(data, route_data))
         thread.daemon = True  # This ensures the thread will be killed when the main program exits
         thread.start()
@@ -451,15 +469,22 @@ def directionDetectionJob(data, route_data):
         print(f'route_id => {route_id}')
         video_url = route_data['videoURL']
         file_name = video_url.split('/')[-1]
-        download_video_from_s3('media.demo.test', f'{file_name}', f'blurred/{file_name}')
+        print(f'file_name => {file_name}')
+        download_success = download_video_from_s3('media.demo.test', f'{file_name}', f'blurred/{file_name}')
+        if download_success == False:
+            raise Exception('download failed')
         logging.info('Starting the direction detection')
         final_directions = directionDetection(file_name)
+        if final_directions == False:
+            raise Exception('Error while generating directions')
         print('from API == ')
         print(final_directions)
         # Store these directions in dynamo table
         store_detected_directions(final_directions, route_id)
         print('done')
-        update_route_field(route_id, 'processStatus', 'DIRECTION_DETECTION_SUCCESS')
+        update_db_success = update_route_field(route_id, 'processStatus', 'DIRECTION_DETECTION_SUCCESS')
+        if update_db_success == False:
+            raise Exception('DB update failed')
         logging.info('Done :+1')
     except Exception as e:
         update_route_field(route_id, 'processStatus', 'DIRECTION_DETECTION_ERROR')
