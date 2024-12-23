@@ -18,7 +18,15 @@ from helpers import  update_route_field
 cpuCount = os.cpu_count()
 logging.info(f'CPUs => {cpuCount}')
 
-frameParallelProcess = 3000
+frameParallelProcess = 1000
+directionTypes = {
+    'STRAIGHT': 'STRAIGHT',
+    'LEFT': 'LEFT',
+    'S_LEFT': 'SLIGHT_LEFT',
+    'RIGHT': 'RIGHT',
+    'S_RIGHT': 'SLIGHT_RIGHT',
+}
+
 
 poolSize = cpuCount
 process_pool = ProcessPoolExecutor(poolSize)
@@ -32,48 +40,18 @@ def getFrameSplits(nChunks, totalFrames):
         if index != 0:
             tempInit += 1
         res.append({
-            'start': tempInit,
-            'end': tempInit + frameParallelProcess -1
+            'startTime': tempInit,
+            'endTime': tempInit + frameParallelProcess -1
         })
         init = tempInit + frameParallelProcess -1
     
     if init != totalFrames:
         res.append({
-            'start': init+1,
-            'end': totalFrames
+            'startTime': init+1,
+            'endTime': totalFrames
         })
     return res
   
-def process_video_segment(frame_meta):
-    time.sleep(frame_meta[2])
-    logging.info(f'start => {frame_meta[0]}')
-    logging.info(f'end => {frame_meta[1]}')
-
-
-def process_video(video_path):
-    # Open the video file
-    cap = cv2.VideoCapture(video_path)
-    try:
-        logging.info('in here---')
-        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        chunks = math.floor(total_frames/frameParallelProcess) + 1 # Total frame segments which will be processed
-        frames_split_meta = getFrameSplits(chunks, total_frames)
-        logging.info(frames_split_meta)
-        input_tuple = []
-        i=3
-        for frame_meta in frames_split_meta:
-            start = frame_meta['start']
-            end = frame_meta['end']
-            input_tuple.append((start, end, i))
-            i +=1
-        
-        logging.info(input_tuple)
-        process_pool.map(process_video_segment, input_tuple)
-    except:
-        logging.info('Error while processing video')
-    finally:
-        cap.release()
-
 
 def classify_direction(flow, sensitivity=1.6, slight_threshold=0.8):
     fx, fy = flow[:,:,0], flow[:,:,1]
@@ -88,15 +66,15 @@ def classify_direction(flow, sensitivity=1.6, slight_threshold=0.8):
     #     return "Straight"
 
     if avg_fx > sensitivity:
-        return "Left"
+        return directionTypes.get('LEFT')
     elif avg_fx > slight_threshold:
-        return "Slight Left"
+        return directionTypes.get('S_LEFT')
     elif avg_fx < -sensitivity:
-        return "Right"
+        return directionTypes.get('RIGHT')
     elif avg_fx < -slight_threshold:
-        return "Slight Right"
+        return directionTypes.get('S_RIGHT')
     else:
-        return "Straight"
+        return directionTypes.get('STRAIGHT')
 
 
 
@@ -138,11 +116,9 @@ def process_vid_segment(meta):
             direction = classify_direction(flow)
 
             # Store the direction with the timestamp as the key
-            direction_data["data"].append({"timestamp": round(timestamp, 2), "direction": direction})
-            if iters%100 == 0:
-                logging.info(f"Frame: {iters} Timestamp : {timestamp:.2f} Direction: {direction}")
-        
-        logging.info('direction_data--')
+            direction_data["data"].append({"timestamp": round(timestamp, 2), "directionIcon": direction})
+            # if iters%100 == 0:
+            #     logging.info(f"Frame: {iters} Timestamp : {timestamp:.2f} Direction: {direction}")
 
         return direction_data
     except Exception as e:
@@ -174,8 +150,8 @@ def directionDetection(file_name):
         input_tuple = []
         i=3
         for frame_meta in frames_split_meta:
-            start = frame_meta['start']
-            end = frame_meta['end']
+            start = frame_meta['startTime']
+            end = frame_meta['endTime']
             input_tuple.append((start, end, fps, file_path))
             i +=1
         # logging.info(frames_split_meta)
@@ -191,26 +167,16 @@ def directionDetection(file_name):
         logging.info('Video fps => ', fps)
         # process_pool.map(process_vid_segment, input_tuple)
         results = list(process_pool.map(process_vid_segment, input_tuple))
-        # logging.info('results ----')
-        # logging.info(results)
         with open(f'multithreaded_ou/{file_name}.json', 'w') as json_file:
             json.dump(results, json_file, indent=4)
 
-        # logging.info('Direction data written to direction_data.json')
-        # logging.info('Done')
+        
         end_time = datetime.now()
-        logging.info(f'StartTime => {start_time}')
-        logging.info(f'EndTime => , {end_time}')
-
-        # logging.info('results -------')
-        # logging.info(results)
 
         finalOutput = sliding_window_main(results, file_name, fps, total_frames)
         if finalOutput == None:
             return False
         else:
-            logging.info('finalOutput --')
-            logging.info(finalOutput)
             return finalOutput
     except Exception as e:
         logging.info('Error in directionDetection fn')

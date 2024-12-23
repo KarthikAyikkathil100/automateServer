@@ -1,14 +1,14 @@
  * Serving Flask app 'app'
  * Debug mode: on
 master_pre -----------
-[{'start': Decimal('0'), 'end': Decimal('22'), 'message': 'Go straight', 'direction': 'straight'}, {'start': Decimal('22'), 'end': Decimal('23'), 'message': 'Turn left', 'direction': 'left'}, {'start': Decimal('23'), 'end': Decimal('25'), 'message': 'Go straight', 'direction': 'straight'}, {'start': Decimal('25'), 'end': Decimal('27'), 'message': 'Turn right', 'direction': 'right'}, {'start': Decimal('27'), 'end': Decimal('28'), 'message': 'Go straight', 'direction': 'straight'}]
+[{'startTime': Decimal('0'), 'endTime': Decimal('22'), 'message': 'Go straight', 'directionIcon': 'straight'}, {'startTime': Decimal('22'), 'endTime': Decimal('23'), 'message': 'Turn left', 'directionIcon': 'left'}, {'startTime': Decimal('23'), 'endTime': Decimal('25'), 'message': 'Go straight', 'directionIcon': 'straight'}, {'startTime': Decimal('25'), 'endTime': Decimal('27'), 'message': 'Turn right', 'directionIcon': 'right'}, {'startTime': Decimal('27'), 'endTime': Decimal('28'), 'message': 'Go straight', 'directionIcon': 'straight'}]
 casting..
 casting..
 casting..
 casting..
 casting..
 master------------
-[{'start': Decimal('0'), 'end': Decimal('22'), 'message': 'Go straight', 'direction': 'straight'}, {'start': Decimal('22'), 'end': Decimal('23'), 'message': 'Turn left', 'direction': 'left'}, {'start': Decimal('23'), 'end': Decimal('25'), 'message': 'Go straight', 'direction': 'straight'}, {'start': Decimal('25'), 'end': Decimal('27'), 'message': 'Turn right', 'direction': 'right'}, {'start': Decimal('27'), 'end': Decimal('28'), 'message': 'Go straight', 'direction': 'straight'}]
+[{'startTime': Decimal('0'), 'endTime': Decimal('22'), 'message': 'Go straight', 'directionIcon': 'straight'}, {'startTime': Decimal('22'), 'endTime': Decimal('23'), 'message': 'Turn left', 'directionIcon': 'left'}, {'startTime': Decimal('23'), 'endTime': Decimal('25'), 'message': 'Go straight', 'directionIcon': 'straight'}, {'startTime': Decimal('25'), 'endTime': Decimal('27'), 'message': 'Turn right', 'directionIcon': 'right'}, {'startTime': Decimal('27'), 'endTime': Decimal('28'), 'message': 'Go straight', 'directionIcon': 'straight'}]
 frame_width => 608
 frame_height => 1088
 ------------------------------------------

@@ -72,39 +72,39 @@ def processDirections(master):
                     prev_p = master[index-1]
                 
                 # process straight directions
-                if (curr_p.get('direction') == 'straight'):
+                if (curr_p.get('directionIcon') == 'straight'):
                     # Current is straight and next is any direction
-                    if (next_p != None and checkIfTurn(next_p.get('direction')) == True) or (index > 0 and index != total_len-1 and checkIfTurn(next_p.get('direction')) == True):
-                        if checkIfTurn(next_p.get('direction'), True) == True:
+                    if (next_p != None and checkIfTurn(next_p.get('directionIcon')) == True) or (index > 0 and index != total_len-1 and checkIfTurn(next_p.get('directionIcon')) == True):
+                        if checkIfTurn(next_p.get('directionIcon'), True) == True:
                             # Sharp turn
                             temp = copy(curr_p)
-                            temp['end'] = max(curr_p.get('start'), (next_p.get('start') - 2))
+                            temp['endTime'] = max(curr_p.get('startTime'), (next_p.get('startTime') - 2))
                             processedDirections.append(temp)
                         else:
                             temp = copy(curr_p)
-                            temp['end'] = max(curr_p.get('start'), (next_p.get('start') - 2))
+                            temp['endTime'] = max(curr_p.get('startTime'), (next_p.get('startTime') - 2))
                             processedDirections.append(temp)
                     else:
                         processedDirections.append(curr_p)
-                elif checkIfTurn(curr_p.get('direction')) == True:
+                elif checkIfTurn(curr_p.get('directionIcon')) == True:
                     if (index == 0):
                         temp = copy(curr_p)
                         temp['sticky'] = True
                         temp['fadeout'] = True
                         processedDirections.append(temp)
                     elif (index == total_len-1):
-                        if checkIfTurn(prev_p.get('direction')) == True:
+                        if checkIfTurn(prev_p.get('directionIcon')) == True:
                             temp = copy(curr_p)
                             temp['sticky'] = True
                             temp['fadeout'] = True
                             processedDirections.append(temp)
                         else:
                             # prev was straight
-                            if checkIfTurn(curr_p.get('direction'), True): # current is Sharp left/right
+                            if checkIfTurn(curr_p.get('directionIcon'), True): # current is Sharp left/right
                                 temp = copy(curr_p)
                                 temp['sticky'] = True
                                 temp['fadeout'] = True
-                                temp['start'] = (processedDirections[-1]).get('end')
+                                temp['startTime'] = (processedDirections[-1]).get('endTime')
                                 processedDirections.append(temp)
                             else:
                                 # Current is Slight left/right
@@ -113,8 +113,8 @@ def processDirections(master):
                                 sticky_temp = copy(curr_p)
                                 sticky_temp['sticky'] = True
                                 sticky_temp['fadeout'] = True
-                                sticky_temp['start'] = (processedDirections[-1]).get('end')
-                                sticky_temp['end'] = curr_p.get('start')
+                                sticky_temp['startTime'] = (processedDirections[-1]).get('endTime')
+                                sticky_temp['endTime'] = curr_p.get('startTime')
                                 processedDirections.append(sticky_temp)
 
                                 # Append the orignal slight left/right duration
@@ -122,9 +122,9 @@ def processDirections(master):
                                 temp['fadeout'] = True
                                 processedDirections.append(temp)
                     elif (index > 0 and index < total_len-1): # somewhere in between
-                        if (prev_p != None and checkIfTurn(prev_p.get('direction')) == True):
+                        if (prev_p != None and checkIfTurn(prev_p.get('directionIcon')) == True):
                             # Current and prev are both turns
-                            if checkIfTurn(curr_p.get('direction'), True):
+                            if checkIfTurn(curr_p.get('directionIcon'), True):
                                 temp = copy(curr_p)
                                 temp['sticky'] = True
                                 temp['fadeout'] = True
@@ -136,11 +136,11 @@ def processDirections(master):
                                 processedDirections.append(temp)
                         else:
                             # Prev was straight, current is turn
-                            if checkIfTurn(curr_p.get('direction'), True): # current is Sharp left/right
+                            if checkIfTurn(curr_p.get('directionIcon'), True): # current is Sharp left/right
                                 temp = copy(curr_p)
                                 temp['sticky'] = True
                                 temp['fadeout'] = True
-                                temp['start'] = (processedDirections[-1]).get('end')
+                                temp['startTime'] = (processedDirections[-1]).get('endTime')
                                 processedDirections.append(temp)
                             else:
                                 # Current is Slight left/right
@@ -149,8 +149,8 @@ def processDirections(master):
                                 sticky_temp = copy(curr_p)
                                 sticky_temp['sticky'] = True
                                 sticky_temp['fadeout'] = True
-                                sticky_temp['start'] = (processedDirections[-1]).get('end')
-                                sticky_temp['end'] = curr_p.get('start')
+                                sticky_temp['startTime'] = (processedDirections[-1]).get('endTime')
+                                sticky_temp['endTime'] = curr_p.get('startTime')
                                 processedDirections.append(sticky_temp)
 
                                 # Append the orignal slight left/right duration
@@ -158,9 +158,9 @@ def processDirections(master):
                                 temp['fadeout'] = True
                                 processedDirections.append(temp)
                             # sticky_temp = copy(curr_p)
-                            # sticky_temp['start'] = (processedDirections[-1]).get('end')
+                            # sticky_temp['startTime'] = (processedDirections[-1]).get('endTime')
                             # sticky_temp['sticky'] = True
-                            # sticky_temp['end'] = curr_p.get('start')
+                            # sticky_temp['endTime'] = curr_p.get('startTime')
                             # # Push the sticky arrow
                             # processedDirections.append(sticky_temp)
                             
@@ -170,8 +170,8 @@ def processDirections(master):
                 if len(processedDirections) > 0:
                     print('casting..')
                     temp = copy(processedDirections[-1])
-                    temp['start'] = int(temp['start'])
-                    temp['end'] = int(temp['end'])
+                    temp['startTime'] = int(temp['startTime'])
+                    temp['endTime'] = int(temp['endTime'])
                     processedDirections[-1] = temp
         return processedDirections
     except Exception as e:
@@ -182,19 +182,19 @@ def preProcess(data):
     if len(data) == 0:
         return data
 
-    if (data[0])['start'] != 0:
+    if (data[0])['startTime'] != 0:
         # add straight direction at start of video
         data.insert(0, {
            "direction": "straight",
-           "end": (data[0])['start'],
+           "end": (data[0])['startTime'],
            "message": "Go straight",
            "start": 0
         })
         
     # Change directions other than turns, straight to => straight
     for index, el in enumerate(data):
-        if any( direction_name == el['direction'] for direction_name in all_turns) == False and el['direction'] != 'straight':
-            el['direction'] = 'straight'
+        if any( direction_name == el['directionIcon'] for direction_name in all_turns) == False and el['directionIcon'] != 'straight':
+            el['directionIcon'] = 'straight'
     
     resData = []
     # Fill gaps between directions with 'straight' direction
@@ -207,12 +207,12 @@ def preProcess(data):
             resData.append(el)
             continue
         
-        if prev['end'] != el['start']:
+        if prev['endTime'] != el['startTime']:
             resData.append({
                "direction": "straight",
-               "end": el['start'],
+               "end": el['startTime'],
                "message": "Go straight",
-               "start": prev['end'],
+               "start": prev['endTime'],
             })
             resData.append(el)
         
@@ -272,11 +272,11 @@ def arrow_attachment_main_v1(file_name, master):
 
         arrows = []
         for el in master:
-            icon = get_direction_icon(el['direction'])
+            icon = get_direction_icon(el['directionIcon'])
             has_sticky = False
             if el.get('sticky') == True:
                 has_sticky = True
-            arrows.append((el['start'], el['end'], icon, has_sticky, el['direction']))
+            arrows.append((el['startTime'], el['endTime'], icon, has_sticky, el['directionIcon']))
         
         
         # Define sticky arrows
@@ -403,7 +403,7 @@ def arrow_attachment_main(file_name, master_pre):
 
         arrows = []
         for el in master:
-            icon = get_direction_icon(el['direction'])
+            icon = get_direction_icon(el['directionIcon'])
             has_sticky = False
             fadeout = False
             if el.get('fadeout') == True:
@@ -411,7 +411,7 @@ def arrow_attachment_main(file_name, master_pre):
                 fadeout = True
             if el.get('sticky') == True:
                 has_sticky = True
-            arrows.append((el['start'], el['end'], icon, has_sticky, el['direction'], fadeout))
+            arrows.append((el['startTime'], el['endTime'], icon, has_sticky, el['directionIcon'], fadeout))
         
         
         # Define sticky arrows

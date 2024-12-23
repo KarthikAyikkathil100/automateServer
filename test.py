@@ -16169,13 +16169,13 @@ directionMessages = {
 def get_verdict(data: List[Dict[str, Any]]) -> Dict[str, Any]:
     direction_meta = {}
     for item in data:
-        direction = item.get('direction', '').lower()
+        direction = item.get('directionIcon', '').lower()
         direction_meta[direction] = direction_meta.get(direction, 0) + 1
     
     total = sum(direction_meta.values()) or 1
     direction_counts = sorted([
         {
-            'direction': dir,
+            'directionIcon': dir,
             'count': count,
             'percent': (count / total) * 100
         }
@@ -16186,21 +16186,21 @@ def get_verdict(data: List[Dict[str, Any]]) -> Dict[str, Any]:
     if direction_counts:
         if len(direction_counts) > 2:
             if (
-                (direction_counts[0]['direction'].lower() == directionTypes['LEFT'] and direction_counts[1]['direction'].lower() == directionTypes['S_LEFT']) or
-                (direction_counts[1]['direction'].lower() == directionTypes['LEFT'] and direction_counts[0]['direction'].lower() == directionTypes['S_LEFT']) or
-                (direction_counts[0]['direction'].lower() == directionTypes['RIGHT'] and direction_counts[1]['direction'].lower() == directionTypes['S_RIGHT']) or
-                (direction_counts[1]['direction'].lower() == directionTypes['RIGHT'] and direction_counts[0]['direction'].lower() == directionTypes['S_RIGHT'])
+                (direction_counts[0]['directionIcon'].lower() == directionTypes['LEFT'] and direction_counts[1]['directionIcon'].lower() == directionTypes['S_LEFT']) or
+                (direction_counts[1]['directionIcon'].lower() == directionTypes['LEFT'] and direction_counts[0]['directionIcon'].lower() == directionTypes['S_LEFT']) or
+                (direction_counts[0]['directionIcon'].lower() == directionTypes['RIGHT'] and direction_counts[1]['directionIcon'].lower() == directionTypes['S_RIGHT']) or
+                (direction_counts[1]['directionIcon'].lower() == directionTypes['RIGHT'] and direction_counts[0]['directionIcon'].lower() == directionTypes['S_RIGHT'])
             ):
                 if (direction_counts[1]['percent'] + direction_counts[0]['percent']) >= threshold:
-                    if directionTypes['LEFT'] in direction_counts[0]['direction'].lower():
+                    if directionTypes['LEFT'] in direction_counts[0]['directionIcon'].lower():
                         verdict = directionTypes['S_LEFT']
-                    elif directionTypes['RIGHT'] in direction_counts[0]['direction'].lower():
+                    elif directionTypes['RIGHT'] in direction_counts[0]['directionIcon'].lower():
                         verdict = directionTypes['S_RIGHT']
             elif direction_counts[0]['percent'] >= threshold:
-                verdict = direction_counts[0]['direction']
+                verdict = direction_counts[0]['directionIcon']
         else:
             if direction_counts[0]['percent'] >= threshold:
-                verdict = direction_counts[0]['direction']
+                verdict = direction_counts[0]['directionIcon']
 
     time_gap = {
         'tStart': data[0]['timestamp'] if data else None,
@@ -16215,7 +16215,7 @@ def process_verdict(data: List[Dict[str, Any]], verdict_meta: Dict[str, Any]):
         target_min = seconds // 60
         target_sec = seconds % 60
         return {
-            'direction': verdict_meta.get('verdict'),
+            'directionIcon': verdict_meta.get('verdict'),
             'seconds': seconds,
             'format': f"{target_min} min {target_sec} sec",
         }
@@ -16236,11 +16236,11 @@ def get_chunks(xs: List[Any], size: int) -> List[List[Any]]:
     return [xs[i:i + size] for i in range(0, len(xs), size)]
 
 def check_same_group(current_group_data: Dict[str, Any], data: Dict[str, Any]) -> bool:
-    data_direction_is_left = directionTypes['LEFT'] in data['direction'].lower()
+    data_direction_is_left = directionTypes['LEFT'] in data['directionIcon'].lower()
     same_direction = (
-        directionTypes['LEFT'] in current_group_data['direction']
+        directionTypes['LEFT'] in current_group_data['directionIcon']
         if data_direction_is_left
-        else directionTypes['RIGHT'] in current_group_data['direction']
+        else directionTypes['RIGHT'] in current_group_data['directionIcon']
     )
     if not same_direction:
         return False
@@ -16279,19 +16279,19 @@ def process_sliding_window_output(data):
         def make_new_group_lead(curr_data):
             nonlocal current_group_lead, group
             current_group_lead = {
-                'direction': curr_data['direction'],
+                'directionIcon': curr_data['directionIcon'],
                 'seconds': curr_data['seconds'],
             }
             group.append(current_group_lead)
 
-        direction_data = [el for el in data if el['direction'] != directionTypes['STRAIGHT']]
+        direction_data = [el for el in data if el['directionIcon'] != directionTypes['STRAIGHT']]
         
         if len(direction_data) == 0 and len(data) > 0:
             # This will be the case when all the direction are straight
             final_data.append({
-                'start': (data[0])['seconds'],
-                'end': (data[-1])['seconds'],
-                'direction': directionTypes['STRAIGHT'],
+                'startTime': (data[0])['seconds'],
+                'endTime': (data[-1])['seconds'],
+                'directionIcon': directionTypes['STRAIGHT'],
                 'message': get_direction_mesage(directionTypes['STRAIGHT']),
                 # 'startFormat': format_seconds(int(start)),
                 # 'endFormat': format_seconds(int(end)),
@@ -16321,10 +16321,10 @@ def process_sliding_window_output(data):
                 start = group[0]['seconds']
                 end = group[-1]['seconds'] + 1 if len(group) > 1 else start + 1
                 final_data.append({
-                    'start': int(start),
-                    'end': int(end),
-                    'direction': group[0]['direction'],
-                    'message': get_direction_mesage(group[0]['direction']),
+                    'startTime': int(start),
+                    'endTime': int(end),
+                    'directionIcon': group[0]['directionIcon'],
+                    'message': get_direction_mesage(group[0]['directionIcon']),
                     # 'startFormat': format_seconds(int(start)),
                     # 'endFormat': format_seconds(int(end)),
                 })
@@ -16346,7 +16346,6 @@ def fun(fps):
                 data.extend(item['data'])
         finalData = sliding_window(data, fps)
         outputData = process_sliding_window_output(finalData)
-        print('done')
         return outputData
     except Exception as e:
         print('Error in slide mian')
