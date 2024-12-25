@@ -23,11 +23,11 @@ def blurVideo(file_name):
     except Exception as e:
         logging.info('Error in blur proecss')
         logging.info(e)
-        try:     
-            update_route_field(route_id, 'processStatus', 'BLUR_ERROR')
-        except Exception as e:
-            logging.info('Error while updating the Database about the error')
-            logging.info(e)
+        # try:     
+        #     update_route_field(route_id, 'processStatus', 'BLUR_ERROR')
+        # except Exception as e:
+        #     logging.info('Error while updating the Database about the error')
+        #     logging.info(e)
         return False
     finally:
         os.remove(f'inputs/{file_name}')

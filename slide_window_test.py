@@ -114466,8 +114466,8 @@ def sliding_window_main(master, file_name, fps):
                 else:
                     straightStubData.append(el)
             prev = el
-        with open(f'multithread-res/{file_name}.txt', 'w', encoding='utf-8') as f:
-            json.dump({'data': straightStubData}, f)
+        # with open(f'multithread-res/{file_name}.txt', 'w', encoding='utf-8') as f:
+        #     json.dump({'data': straightStubData}, f)
         print('File write done!!')
         return straightStubData
     except Exception as e:

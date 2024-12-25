@@ -5,14 +5,15 @@ import psutil
 import time
 # Initialize DynamoDB resource using boto3
 dynamodb = boto3.resource('dynamodb')
-table_name = 'dev-Routes'
+table_name = 'Routes'
 
 # Define a DynamoDB table (You can create the table manually in AWS or use boto3 to create it)
-table = dynamodb.Table(table_name)
 
 
-def get_route_data(item_id):
+def get_route_data(item_id, env = 'dev'):
     try:
+        target_table = f'{env}-{table_name}'
+        table = dynamodb.Table(target_table)
         # Fetch the item from DynamoDB by id
         response = table.get_item(Key={'id': item_id})
 
@@ -27,13 +28,15 @@ def get_route_data(item_id):
         return None
 
 
-def store_detected_directions(data, key):
+def store_detected_directions(data, key, env = 'dev'):
     try:
+        target_table = f'{env}-{table_name}'
+        table = dynamodb.Table(target_table)
         table.update_item(
             Key={
                 'id': key
             },
-            UpdateExpression="set detectedDirections = :r",
+            UpdateExpression="set newSourceCaption = :r",
             ExpressionAttributeValues={
                 ':r': data,
             },
@@ -44,8 +47,10 @@ def store_detected_directions(data, key):
         logging.info('Error while storing detected directions in Dynamo DB')
         return None
 
-def update_route_field(key, field, value):
+def update_route_field(key, field, value, env = 'dev'):
     try:
+        target_table = f'{env}-{table_name}'
+        table = dynamodb.Table(target_table)
         table.update_item(
             Key={
                 'id': key
@@ -66,10 +71,14 @@ def update_route_field(key, field, value):
 
 
 
-def download_video_from_s3(bucket_name, object_key, download_path):
+def download_video_from_s3(bucket_name, object_key, download_path, env = 'dev'):
+    target_table = f'{env}-{table_name}'
+    table = dynamodb.Table(target_table)
     # Create an S3 client using Boto3
     s3 = boto3.client('s3')
-
+    print(bucket_name)
+    print(object_key)
+    print(download_path)
     try:
         # Download the file from S3 to the specified local path
         s3.download_file(bucket_name, object_key, download_path)
@@ -79,7 +88,7 @@ def download_video_from_s3(bucket_name, object_key, download_path):
         logging.info(f"Error downloading file: {e}")
         return False
 
-def upload_video_to_s3(file_path, bucket_name, object_name=None):
+def upload_video_to_s3(file_path, bucket_name, object_name=None, env='dev'):
     """
     Upload a video file to an S3 bucket.
 
@@ -94,8 +103,8 @@ def upload_video_to_s3(file_path, bucket_name, object_name=None):
 
     try:
         # Upload the file to S3
-        s3.upload_file(file_path, bucket_name, object_name)
-        logging.info(f"Upload Successful: {file_path} to {bucket_name}/{object_name}")
+        s3.upload_file(file_path, bucket_name, f'{env}/routes/{object_name}')
+        logging.info(f"Upload Successful: {file_path} to {bucket_name}/{env}/routes/{object_name}")
         return True
     except FileNotFoundError:
         logging.info(f"Error: The file {file_path} was not found.")
@@ -122,3 +131,12 @@ def get_average_cpu_utilization(interval=1, times=5):
     # Calculate and return the average CPU usage
     average_cpu_usage = sum(cpu_usages) / len(cpu_usages)
     return average_cpu_usage
+
+
+def update_automation_time(route_id, env='dev'):
+    try:
+        current_time = int(time.time())*1000
+        update_route_field(route_id, 'automationUpdateAt', current_time, env)
+    except Exception as e:
+        print('Error while storing time')
+        return None

@@ -18,7 +18,7 @@ from helpers import  update_route_field
 cpuCount = os.cpu_count()
 logging.info(f'CPUs => {cpuCount}')
 
-frameParallelProcess = 1000
+frameParallelProcess = 800
 directionTypes = {
     'STRAIGHT': 'STRAIGHT',
     'LEFT': 'LEFT',
@@ -27,7 +27,13 @@ directionTypes = {
     'S_RIGHT': 'SLIGHT_RIGHT',
 }
 
-
+directionMessages = {
+    'STRAIGHT': 'Go straight',
+    'LEFT': 'Turn left',
+    'SLIGHT_LEFT': 'Turn slight left',
+    'RIGHT': 'Turn right',
+    'SLIGHT_RIGHT': 'Turn slight right',
+}
 poolSize = cpuCount
 process_pool = ProcessPoolExecutor(poolSize)
 
@@ -167,8 +173,8 @@ def directionDetection(file_name):
         logging.info('Video fps => ', fps)
         # process_pool.map(process_vid_segment, input_tuple)
         results = list(process_pool.map(process_vid_segment, input_tuple))
-        with open(f'multithreaded_ou/{file_name}.json', 'w') as json_file:
-            json.dump(results, json_file, indent=4)
+        # with open(f'multithreaded_ou/{file_name}.json', 'w') as json_file:
+        #     json.dump(results, json_file, indent=4)
 
         
         end_time = datetime.now()
@@ -177,6 +183,14 @@ def directionDetection(file_name):
         if finalOutput == None:
             return False
         else:
+            # Change the directionIcon value
+            for _, el in enumerate(finalOutput):
+                resDirection = el['directionIcon'].upper()
+                el['directionIcon'] = resDirection
+                el['description'] = directionMessages.get(resDirection)
+
+                print(el['directionIcon'])
+                print(el['description'])
             return finalOutput
     except Exception as e:
         logging.info('Error in directionDetection fn')

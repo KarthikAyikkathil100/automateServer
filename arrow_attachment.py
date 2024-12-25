@@ -9,42 +9,6 @@ logging.basicConfig(level=logging.INFO)
 
 all_turns = ['right', 'slight right', 'left', 'slight left']
 sharp_turns = ['right', 'left']
-master = [
-  {
-    "direction": "straight",
-    "end": 20,
-    "message": "Go straight",
-    "start": 0
-  },
-  {
-    "direction": "left",
-    "end": 23,
-    "message": "Turn left",
-    "start": 20,
-    "sticky": True,
-    "fadeout": True
-  },
-  {
-    "direction": "straight",
-    "end": 23,
-    "message": "Go straight",
-    "start": 23
-  },
-  {
-    "direction": "right",
-    "end": 27,
-    "message": "Turn right",
-    "start": 23,
-    "sticky": True,
-    "fadeout": True
-  },
-  {
-    "direction": "straight",
-    "end": 28,
-    "message": "Go straight",
-    "start": 27
-  }
-]
 def checkIfTurn(curr_turn_name, sharp_only = False):
     if sharp_only == False:
         return any( direction_name == curr_turn_name for direction_name in all_turns)
@@ -381,11 +345,7 @@ def arrow_attachment_main_v1(file_name, master):
 
 def arrow_attachment_main(file_name, master_pre):
     try: 
-        print('master_pre -----------')
-        print(master_pre)
         master = processDirections(master_pre)
-        print('master------------')
-        print(master)
 
         # master = master_pre
         # Load the video
@@ -395,8 +355,6 @@ def arrow_attachment_main(file_name, master_pre):
         frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
-        print(f'frame_width => {frame_width}')
-        print(f'frame_height => {frame_height}')
         # Define the codec and create VideoWriter object to save the output video
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         out = cv2.VideoWriter(f'final/{file_name}', fourcc, fps, (frame_width, frame_height))
@@ -438,15 +396,11 @@ def arrow_attachment_main(file_name, master_pre):
         while cap.isOpened():
             # print(f'frame_number => {frame_number}')
             # logging.info(f'frame process => {frame_number}')
-            print('------------------------------------------')
             ret, frame = cap.read()
             if not ret:
                 break
             # Get the current time in seconds
             current_time = frame_number / fps
-
-            print(f'frame_number => {frame_number}')
-            print(f'current_time => {current_time}')
 
             # Determine which arrow to display based on the time intervals
             new_arrow = None
@@ -470,9 +424,6 @@ def arrow_attachment_main(file_name, master_pre):
                     if direction_name == 'straight': 
                         duration = 3
                     break
-            print(f'current_start_time => {current_start_time}')
-            print(f'current_end_time => {current_end_time}')
-            print(f'current_fade_out => {current_fade_out}')
             # If the arrow changes, reset the animation
             if new_arrow is not None:
                 if current_arrow is None or not np.array_equal(current_arrow, new_arrow) or (prev_direction != None and prev_sticky != None and (prev_sticky != is_sticky or prev_direction != direction_string)) or (current_start_time != prev_start_time):
@@ -481,7 +432,6 @@ def arrow_attachment_main(file_name, master_pre):
                     arrow_changed = True  # Mark that the arrow has changed
                 else:
                     arrow_changed = False  # No change in arrow
-            print(f'arrow_changed => {arrow_changed}')
             # If there's no valid arrow, continue without overlay
             if current_arrow is None:
                 prev_direction = direction_string
@@ -495,13 +445,8 @@ def arrow_attachment_main(file_name, master_pre):
             # Reset animation cycle if current animation completes (Only applicable for straight arrow)
             if (current_time - arrow_start_time) >= duration:
                 if direction_string != None and direction_string == 'straight':
-                    print('reset')
                     arrow_start_time = current_time  # Reset the animation cycle for continuous movement
             
-            print(f'turn_duration => {turn_duration}')
-            print(f'duration => {duration}')
-            print(f'direction_string => {direction_string}')
-            print(f'is_sticky => {is_sticky}')
             # Animate the current arrow (reset if changed, continue if not)
             frame = animate_arrow_approach(frame, current_arrow, current_time, sticky_arrows, sticky_position, duration, arrow_start_time, is_sticky, turn_duration, direction_string, current_fade_out)
 
@@ -609,18 +554,11 @@ def animate_arrow_approach(frame, arrow_image, current_time, sticky_arrows, stic
         start_scale = 0.2  # Arrow appears smaller (far away)
         end_scale = 0.6   # Arrow appears at a reasonable size (closer)
         elapsed_time = current_time - arrow_start_time  # Time since the arrow started
-        print('here ---- E')
-        print(f'elapsed_time => {elapsed_time}')
-        print(f'duration => {duration}')
-        print(f'elapsed_time type => {type(elapsed_time)}')
-        print(f'duration type => {type(duration)}')
         
         if elapsed_time == 0:
-            print('dilt--')
             progress = 1.0
         else:
             progress = min(1.0, elapsed_time / int(duration))  # Progress capped at 1.0
-        print('here ---- F')
         height, width, _ = frame.shape
         
         if is_sticky:
@@ -663,7 +601,6 @@ def animate_arrow_approach(frame, arrow_image, current_time, sticky_arrows, stic
                 end_position = (int(width * 0.5), height + 100)
 
 
-        print('here--A')
         # Interpolate scale and position based on progress
         scale = start_scale + (end_scale - start_scale) * progress
         current_position = (
@@ -671,7 +608,6 @@ def animate_arrow_approach(frame, arrow_image, current_time, sticky_arrows, stic
             int(start_position[1] + (end_position[1] - start_position[1]) * progress)
         )
 
-        print('here--B')
 
         opacity_progress = None
         if direction_string == "straight" or fadeout == False: 
@@ -683,36 +619,26 @@ def animate_arrow_approach(frame, arrow_image, current_time, sticky_arrows, stic
                 opacity_progress = 1.0  # After 0.6 seconds, the arrow is fully opaque
         else:
             # Fade-in effect (first 0.6 seconds)
-            print('here -- C')
             fade_in_duration = max(turn_duration-1, 1.0)  # Fade-in period (0.6 seconds)s
             # fade_in_duration = 0.6
-            print(f'fade_in_duration => {fade_in_duration}')
-            print(f'fade_in_duration type => {type(fade_in_duration)}')
 
             ## With fade-in effect for turns
             if elapsed_time < fade_in_duration:
-                print('debug:1')
                 if elapsed_time == 0:
-                    print('debug:1.1')
                     opacity_progress = 0
-                else:    
-                    print('debug:1.2')
+                else:
                     # opacity_progress = float(elapsed_time) / float(fade_in_duration)  # Opacity increases from 0 to 1
                     opacity_progress = 1
             else:
-                print('debug:2')
                 # Fade-out effect (after the fade-in, the arrow will fade out)
                 remaining_time = current_time - (float(arrow_start_time) + float(fade_in_duration))  # Time after fade-in period
                 fade_out_duration = float(turn_duration) - float(fade_in_duration)  # Total duration for fade-out
                 if fade_out_duration == 0:
-                    print('debug:3')
                     # This will be thee case when the turn duration is exactly 1 second
                     # So there won't be any time for the opacity-reduce animation
                     opacity_progress = 1 
                 else:
-                    print('debug:4')
                     if remaining_time < fade_out_duration:
-                        print('debug:5')
                         opacity_progress = 1 - (float(remaining_time) / float(fade_out_duration))  # Opacity decreases from 1 to 0
                     else:
                         opacity_progress = 0  # Fully transparent after fade-out duration
@@ -735,7 +661,6 @@ def animate_arrow_approach(frame, arrow_image, current_time, sticky_arrows, stic
             #         opacity_progress = 1 - (float(remaining_time) / float(fade_out_duration))  # Opacity decreases from 1 to 0
             #     else:
             #         opacity_progress = 0  # Fully transparent after fade-out duration
-    print('Here -D')
     # Overlay the arrow on the frame with calculated scale, position, and opacity
     frame = overlay_arrow(frame, arrow_image, current_position, scale=scale, opacity=opacity_progress)
     
