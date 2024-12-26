@@ -19,6 +19,8 @@ def checkIfTurn(curr_turn_name, sharp_only = False):
 def processDirections(master):
     try:
         master = preProcess(master)
+        print('After pre-process')
+        print(master)
         total_len = len(master)
         processedDirections = []
 
@@ -143,46 +145,48 @@ def processDirections(master):
         return None
 
 def preProcess(data):
-    if len(data) == 0:
-        return data
-
-    if (data[0])['startTime'] != 0:
-        # add straight direction at start of video
-        data.insert(0, {
-           "direction": "straight",
-           "end": (data[0])['startTime'],
-           "message": "Go straight",
-           "start": 0
-        })
-        
-    # Change directions other than turns, straight to => straight
-    for index, el in enumerate(data):
-        if any( direction_name == el['directionIcon'] for direction_name in all_turns) == False and el['directionIcon'] != 'straight':
-            el['directionIcon'] = 'straight'
-    
-    resData = []
-    # Fill gaps between directions with 'straight' direction
-    prev = None
-    for index, el in enumerate(data):
-        if index-1 >= 0:
-            prev = data[index-1]
-        
-        if prev == None:
-            resData.append(el)
-            continue
-        
-        if prev['endTime'] != el['startTime']:
-            resData.append({
-               "direction": "straight",
-               "end": el['startTime'],
-               "message": "Go straight",
-               "start": prev['endTime'],
+    try:
+        if len(data) == 0:
+            return data
+        if (data[0])['startTime'] != 0:
+            # add straight direction at start of video
+            data.insert(0, {
+            "directionIcon": "STRAIGHT",
+            "endTime": (data[0])['startTime'],
+            "message": "Go straight",
+            "startTime": 0
             })
-            resData.append(el)
-        
-        else:
-            resData.append(el)
-    return resData
+        print('block 1')
+        # Change directions other than turns, straight to => straight
+        for index, el in enumerate(data):
+            if any( direction_name == el['directionIcon'] for direction_name in all_turns) == False and el['directionIcon'] != 'STRAIGHT':
+                el['directionIcon'] = 'STRAIGHT'
+        resData = []
+        # Fill gaps between directions with 'straight' direction
+        prev = None
+        for index, el in enumerate(data):
+            if index-1 >= 0:
+                prev = data[index-1]
+            
+            if prev == None:
+                resData.append(el)
+                continue
+            
+            if prev['endTime'] != el['startTime']:
+                resData.append({
+                "directionIcon": "STRAIGHT",
+                "endTime": el['startTime'],
+                "message": "Go straight",
+                "startTime": prev['endTime'],
+                })
+                resData.append(el)
+            
+            else:
+                resData.append(el)
+        return resData
+    except Exception as e:
+        print(e)
+        return None
 
 # Load arrow images
 def load_image(path):

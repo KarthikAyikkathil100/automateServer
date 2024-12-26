@@ -174,13 +174,16 @@ def arrowAttachJob(data, route_data):
         logging.info("Command Error Output codec:", result_dim.stderr)
         update_automation_time(route_id, env)
 
-        new_file_name = f'new_{file_name}'
-        new_link = f'https://s3.ap-south-1.amazonaws.com/media.demo.test/{new_file_name}'
+        # new_file_name = f'new_{file_name}'
+        # new_link = f'https://s3.ap-south-1.amazonaws.com/media.demo.test/{new_file_name}'
         db_update_success = False
-        db_update_success = upload_video_to_s3(f'final/codec_{file_name}', bucket_name, new_file_name, env)
+        db_update_success = upload_video_to_s3(f'final/codec_{file_name}', bucket_name, file_name, env)
         if db_update_success == False:
             raise Exception('DB update error')
-        db_update_success = update_route_field(route_id, 'processedVideoURL', new_link, env)
+        db_update_success = update_route_field(route_id, 'sourceCaption', route_data.get('newSourceCaption'), env)
+        if db_update_success == False:
+            raise Exception('DB update error')
+        db_update_success = update_route_field(route_id, 'languageCaptions', route_data.get('newLanguageCaptions'), env)
         if db_update_success == False:
             raise Exception('DB update error')
         db_update_success = update_route_field(route_id, 'processStatus', 'ARROW_ATTACHMENT_SUCCESS', env)
@@ -188,6 +191,7 @@ def arrowAttachJob(data, route_data):
             raise Exception('DB update error')
     except Exception as e:
         logging.info('Error while processing arrow attachment')
+        print(e)
         try:
             update_route_field(route_id, 'processStatus', 'ARROW_ATTACHMENT_ERROR', env)
             update_automation_time(route_id, env)
