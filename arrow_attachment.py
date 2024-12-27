@@ -7,8 +7,8 @@ from helpers import  update_route_field
 logging.basicConfig(level=logging.INFO)
 
 
-all_turns = ['right', 'slight right', 'left', 'slight left']
-sharp_turns = ['right', 'left']
+all_turns = ['RIGHT', 'SLIGHT_RIGHT', 'LEFT', 'SLIGHT_LEFT']
+sharp_turns = ['RIGHT', 'LEFT']
 def checkIfTurn(curr_turn_name, sharp_only = False):
     if sharp_only == False:
         return any( direction_name == curr_turn_name for direction_name in all_turns)
@@ -38,7 +38,7 @@ def processDirections(master):
                     prev_p = master[index-1]
                 
                 # process straight directions
-                if (curr_p.get('directionIcon') == 'straight'):
+                if (curr_p.get('directionIcon') == 'STRAIGHT'):
                     # Current is straight and next is any direction
                     if (next_p != None and checkIfTurn(next_p.get('directionIcon')) == True) or (index > 0 and index != total_len-1 and checkIfTurn(next_p.get('directionIcon')) == True):
                         if checkIfTurn(next_p.get('directionIcon'), True) == True:
@@ -148,21 +148,22 @@ def preProcess(data):
     try:
         if len(data) == 0:
             return data
-        if (data[0])['startTime'] != 0:
+        if (data[0])['startTime'] != 0 and (data[0])['startTime'] != '0':
+            print('HERE ----------------------------------')
             # add straight direction at start of video
             data.insert(0, {
             "directionIcon": "STRAIGHT",
             "endTime": (data[0])['startTime'],
+            "description": "Go straight",
             "message": "Go straight",
             "startTime": 0
             })
-        print('block 1')
         # Change directions other than turns, straight to => straight
         for index, el in enumerate(data):
             if any( direction_name == el['directionIcon'] for direction_name in all_turns) == False and el['directionIcon'] != 'STRAIGHT':
                 el['directionIcon'] = 'STRAIGHT'
         resData = []
-        # Fill gaps between directions with 'straight' direction
+        # Fill gaps between directions with 'STRAIGHT' direction
         prev = None
         for index, el in enumerate(data):
             if index-1 >= 0:
@@ -176,6 +177,7 @@ def preProcess(data):
                 resData.append({
                 "directionIcon": "STRAIGHT",
                 "endTime": el['startTime'],
+                "description": "Go straight",
                 "message": "Go straight",
                 "startTime": prev['endTime'],
                 })
@@ -212,13 +214,13 @@ right_turns = [arrow_right, arrow_slight_right]
 
 
 def get_direction_icon(direction):
-    if (direction == 'left'):
+    if (direction == 'LEFT'):
         return arrow_left
-    elif direction == 'slight left':
+    elif direction == 'SLIGHT_LEFT':
         return arrow_slight_left
-    elif direction == 'right':
+    elif direction == 'RIGHT':
         return arrow_right
-    elif direction == 'slight right':
+    elif direction == 'SLIGHT_RIGHT':
         return arrow_slight_right
     else:
         return arrow_straight 
@@ -289,12 +291,12 @@ def arrow_attachment_main_v1(file_name, master):
                     current_end_time = end_time
                     new_arrow = arrow_image
                     direction_string = direction_name
-                    if direction_name == 'left' or direction_name == 'right' or direction_name == 'slight left' or direction_name == 'slight right': 
+                    if direction_name == 'LEFT' or direction_name == 'RIGHT' or direction_name == 'SLIGHT_LEFT' or direction_name == 'SLIGHT_RIGHT': 
                         turn_duration = end_time - start_time
                         duration = end_time - start_time
                     if sticky == True:
                         is_sticky = True
-                    if direction_name == 'straight': 
+                    if direction_name == 'STRAIGHT': 
                         duration = 3
                     break
             # If the arrow changes, reset the animation
@@ -313,7 +315,7 @@ def arrow_attachment_main_v1(file_name, master):
 
             # Reset animation cycle if current animation completes (Only applicable for straight arrow)
             if (current_time - arrow_start_time) >= duration:
-                if direction_string != None and direction_string == 'straight':
+                if direction_string != None and direction_string == 'STRAIGHT':
                     arrow_start_time = current_time  # Reset the animation cycle for continuous movement
 
             if current_time > 186 and current_time < 208:
@@ -420,12 +422,12 @@ def arrow_attachment_main(file_name, master_pre):
                     new_arrow = arrow_image
                     direction_string = direction_name
                     current_fade_out = fadeout
-                    if direction_name == 'left' or direction_name == 'right' or direction_name == 'slight left' or direction_name == 'slight right': 
+                    if direction_name == 'LEFT' or direction_name == 'RIGHT' or direction_name == 'SLIGHT_LEFT' or direction_name == 'SLIGHT_RIGHT': 
                         turn_duration = end_time - start_time
                         duration = end_time - start_time
                     if sticky == True:
                         is_sticky = True
-                    if direction_name == 'straight': 
+                    if direction_name == 'STRAIGHT': 
                         duration = 3
                     break
             # If the arrow changes, reset the animation
@@ -448,7 +450,7 @@ def arrow_attachment_main(file_name, master_pre):
 
             # Reset animation cycle if current animation completes (Only applicable for straight arrow)
             if (current_time - arrow_start_time) >= duration:
-                if direction_string != None and direction_string == 'straight':
+                if direction_string != None and direction_string == 'STRAIGHT':
                     arrow_start_time = current_time  # Reset the animation cycle for continuous movement
             
             # Animate the current arrow (reset if changed, continue if not)
@@ -543,9 +545,10 @@ def overlay_arrow(frame, arrow_image, position, scale=1.0, opacity=1.0):
 
 
 
-def animate_arrow_approach(frame, arrow_image, current_time, sticky_arrows, sticky_position, duration=2, arrow_start_time=0, is_sticky=False, turn_duration=3, direction_string = 'straight', fadeout = False):
+def animate_arrow_approach(frame, arrow_image, current_time, sticky_arrows, sticky_position, duration=2, arrow_start_time=0, is_sticky=False, turn_duration=3, direction_string = 'STRAIGHT', fadeout = False):
     """Animate arrow moving left with fade-in and fade-out effects over specified time durations."""
     if arrow_image is None:
+        print('this one ?')
         return frame
 
     # Check if the arrow is sticky
@@ -568,10 +571,10 @@ def animate_arrow_approach(frame, arrow_image, current_time, sticky_arrows, stic
         if is_sticky:
             start_scale = 0.6  # Sticky scale (no change in scale)
             end_scale = 0.6
-            if direction_string == 'slight left':
+            if direction_string == 'SLIGHT_LEFT':
                 start_position = (int(width // 2), int(height * 0.8))
                 end_position = (int(width // 2), int(height * 0.8))
-            elif direction_string == 'slight right':
+            elif direction_string == 'SLIGHT_RIGHT':
                 start_position = (int(width // 2), int(height * 0.8))
                 end_position = (int(width // 2), int(height * 0.8))
             elif any(np.array_equal(arrow_image, lft_arrow) for lft_arrow in left_turns):
@@ -585,12 +588,12 @@ def animate_arrow_approach(frame, arrow_image, current_time, sticky_arrows, stic
                 end_position = (int(width // 2), int(height * 0.8))
         else:
             # Define start and end positions for non-sticky arrows
-            if direction_string == 'slight left' or direction_string == 'slight right':
+            if direction_string == 'SLIGHT_LEFT' or direction_string == 'SLIGHT_RIGHT':
                 # Slight left/right turns
-                if direction_string == 'slight left':
+                if direction_string == 'SLIGHT_LEFT':
                     start_position = (int(width * 0.3), int(height * 0.7))
                     end_position = (int(width * 0.9), int(height * 0.9))
-                elif direction_string == 'slight right':
+                elif direction_string == 'SLIGHT_RIGHT':
                     start_position = (int(width * 0.9), int(height * 0.7))
                     end_position = (int(width * 0.3), int(height * 0.9))
             elif any(np.array_equal(arrow_image, lft_arrow) for lft_arrow in left_turns):
@@ -614,7 +617,7 @@ def animate_arrow_approach(frame, arrow_image, current_time, sticky_arrows, stic
 
 
         opacity_progress = None
-        if direction_string == "straight" or fadeout == False: 
+        if direction_string == 'STRAIGHT' or fadeout == False: 
             # Fade-in effect: adjust opacity based on time (first 0.6 seconds of the arrow's animation)
             fade_in_duration = 0.6  # Fade-in period (0.6 seconds)
             if elapsed_time < fade_in_duration:  # Only fade during the first 0.6 seconds

@@ -152,6 +152,10 @@ def arrowAttachJob(data, route_data):
         route_id = route_data['id']
         if data['env'] != None:
             env = data['env']
+        new_route = False
+        existingSourceCaption = route_data['sourceCaption']
+        if existingSourceCaption == None or len(existingSourceCaption) == 0:
+            new_route = True
         update_route_field(route_id, 'processStatus', 'ARROW_ATTACHMENT_START', env)
         update_automation_time(route_id, env)
         video_url = route_data.get('videoURL')
@@ -174,12 +178,17 @@ def arrowAttachJob(data, route_data):
         logging.info("Command Error Output codec:", result_dim.stderr)
         update_automation_time(route_id, env)
 
-        # new_file_name = f'new_{file_name}'
-        # new_link = f'https://s3.ap-south-1.amazonaws.com/media.demo.test/{new_file_name}'
+        new_file_name = f'processed_{file_name}'
+        new_link = f'https://media.rtme.us/{env}/routes/{new_file_name}'
         db_update_success = False
-        db_update_success = upload_video_to_s3(f'final/codec_{file_name}', bucket_name, file_name, env)
+        db_update_success = upload_video_to_s3(f'final/codec_{file_name}', bucket_name, new_file_name, env)
         if db_update_success == False:
             raise Exception('DB update error')
+
+        db_update_success = update_route_field(route_id, 'processedVideoLink', new_link, env)
+        if db_update_success == False:
+            raise Exception('DB update error')
+
         db_update_success = update_route_field(route_id, 'sourceCaption', route_data.get('newSourceCaption'), env)
         if db_update_success == False:
             raise Exception('DB update error')
@@ -388,7 +397,7 @@ def textBlurJob(data, route_data):
 
 @app.route('/check-health')
 def cpuCheck():
-    return "[Updated again 3] Server says hii", 200
+    return "[Updated again 5] Server says hii", 200
     # avg_cpu = get_average_cpu_utilization(interval=1, times=2)
     # logging.info(f'Average CPU => {avg_cpu}')
     # if avg_cpu > 80:
@@ -711,3 +720,8 @@ if __name__ == '__main__':
 else:
     logging.info('not going in main')
 
+
+
+def Cloning(li1):
+    li_copy = li1[:]
+    return li_copy
