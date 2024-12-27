@@ -139,8 +139,11 @@ def sliding_window_main(master, file_name, fps, total_frames):
         finalData = sliding_window(data, fps)
         # with open(f'multithread-res/{file_name}.txt', 'w', encoding='utf-8') as f:
         #     json.dump({'data': finalData}, f)
-        
+        print('before process_sliding_window_output')
+        print(finalData)
         outputData = process_sliding_window_output(finalData)
+        print('after process_sliding_window_output')
+        print(outputData)
         prev = None
         straightStubData = []
         if (outputData[0])['directionIcon'] != 'straight' and (outputData[0])['startTime'] != 0:
@@ -233,16 +236,51 @@ def adjustTime(master):
         print(e)
         return None
 
+# def check_same_group(current_group_data: Dict[str, Any], data: Dict[str, Any]) -> bool:
+#     data_direction_is_left = directionTypes['LEFT'] in data['directionIcon'].lower()
+#     same_direction = (
+#         directionTypes['LEFT'] in current_group_data['directionIcon']
+#         if data_direction_is_left
+#         else directionTypes['RIGHT'] in current_group_data['directionIcon']
+#     )
+#     if not same_direction:
+#         return False
+#     return data['seconds'] - current_group_data['seconds'] <= 2.5
+
 def check_same_group(current_group_data: Dict[str, Any], data: Dict[str, Any]) -> bool:
-    data_direction_is_left = directionTypes['LEFT'] in data['directionIcon'].lower()
+    data_direction = data['directionIcon']
+    current_direction = current_group_data['directionIcon']
+    
+    print(f'data_direction => {data_direction}')
+    print(f'current_direction => {current_direction}')
+
+    # Check if directions match, including STRAIGHT
     same_direction = (
-        directionTypes['LEFT'] in current_group_data['directionIcon']
-        if data_direction_is_left
-        else directionTypes['RIGHT'] in current_group_data['directionIcon']
+        (directionTypes['LEFT'].lower() in current_direction.lower() and directionTypes['LEFT'].lower() in data_direction.lower()) or
+        (directionTypes['RIGHT'].lower() in current_direction.lower() and directionTypes['RIGHT'].lower() in data_direction.lower()) or
+        (directionTypes['STRAIGHT'].lower() in current_direction.lower() and directionTypes['STRAIGHT'].lower() in data_direction.lower())
     )
-    if not same_direction:
-        return False
-    return data['seconds'] - current_group_data['seconds'] <= 2.5
+    return same_direction
+    
+
+# def check_same_group(current_group_data: Dict[str, Any], data: Dict[str, Any]) -> bool:
+#     data_direction = data['directionIcon']
+#     current_direction = current_group_data['directionIcon']
+
+#     # Check if directions match, including STRAIGHT
+#     same_direction = (
+#         (directionTypes['LEFT'] in current_direction and directionTypes['LEFT'] in data_direction) or
+#         (directionTypes['RIGHT'] in current_direction and directionTypes['RIGHT'] in data_direction) or
+#         (directionTypes['STRAIGHT'] in current_direction and directionTypes['STRAIGHT'] in data_direction)
+#     )
+    
+#     # Return False if directions do not match
+#     if not same_direction:
+#         return False
+    
+#     # Check if the time difference is within 2.5 seconds
+#     return data['seconds'] - current_group_data['seconds'] <= 2.5
+
 
 def process_sliding_window_output(data):
     try:
@@ -264,7 +302,8 @@ def process_sliding_window_output(data):
             }
             group.append(current_group_lead)
 
-        direction_data = [el for el in data if el['directionIcon'] != directionTypes['STRAIGHT']]
+        # direction_data = [el for el in data if el['directionIcon'] != directionTypes['STRAIGHT']]
+        direction_data = [el for el in data ]
         
         if len(direction_data) == 0 and len(data) > 0:
             # This will be the case when all the direction are straight
@@ -314,19 +353,18 @@ def process_sliding_window_output(data):
         print(e)
         return None
 
-
 def get_direction_mesage(direction):
     try:    
         message = ""
-        if direction.lower() == directionTypes['STRAIGHT']:
+        if direction.lower() == directionTypes['STRAIGHT'].lower():
             message = "Go straight"
-        elif direction.lower() == directionTypes['LEFT']:
+        elif direction.lower() == directionTypes['LEFT'].lower():
             message = "Turn left"
-        elif direction.lower() == directionTypes['S_LEFT']:
+        elif direction.lower() == directionTypes['S_LEFT'].lower():
             message = "Turn slight left"
-        elif direction.lower() == directionTypes['RIGHT']:
+        elif direction.lower() == directionTypes['RIGHT'].lower():
             message = "Turn right"
-        elif direction.lower() == directionTypes['S_RIGHT']:
+        elif direction.lower() == directionTypes['S_RIGHT'].lower():
             message = "Turn slight right"
         
         return message

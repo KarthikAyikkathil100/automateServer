@@ -198,5 +198,12 @@ def directionDetection(file_name):
         return False
 
 
+# def postprocessDirections(directions):
+#     try:
+
+#     except Exception as e:
+#         print(e)
+#         raise e
+
 # if __name__ == '__main__':
 #     directionDetection('mia_test.mp4')
