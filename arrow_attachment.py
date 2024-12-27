@@ -19,8 +19,10 @@ def checkIfTurn(curr_turn_name, sharp_only = False):
 def processDirections(master):
     try:
         master = preProcess(master)
-        print('After pre-process')
-        print(master)
+        for index, el in enumerate(master):
+            t = el.get('startTime')
+            tt = type(t)
+            print(f'startTime => {t}, tt => {tt}')
         total_len = len(master)
         processedDirections = []
 
@@ -36,6 +38,7 @@ def processDirections(master):
                     next_p = master[index+1]
                 if index != 0:
                     prev_p = master[index-1]
+
                 
                 # process straight directions
                 if (curr_p.get('directionIcon') == 'STRAIGHT'):
@@ -149,11 +152,10 @@ def preProcess(data):
         if len(data) == 0:
             return data
         if (data[0])['startTime'] != 0 and (data[0])['startTime'] != '0':
-            print('HERE ----------------------------------')
             # add straight direction at start of video
             data.insert(0, {
             "directionIcon": "STRAIGHT",
-            "endTime": (data[0])['startTime'],
+            "endTime": int((data[0])['startTime']),
             "description": "Go straight",
             "message": "Go straight",
             "startTime": 0
@@ -162,6 +164,8 @@ def preProcess(data):
         for index, el in enumerate(data):
             if any( direction_name == el['directionIcon'] for direction_name in all_turns) == False and el['directionIcon'] != 'STRAIGHT':
                 el['directionIcon'] = 'STRAIGHT'
+            el['startTime'] = int(el['startTime'])
+            el['endTime'] = int(el['endTime'])
         resData = []
         # Fill gaps between directions with 'STRAIGHT' direction
         prev = None
@@ -176,10 +180,10 @@ def preProcess(data):
             if prev['endTime'] != el['startTime']:
                 resData.append({
                 "directionIcon": "STRAIGHT",
-                "endTime": el['startTime'],
+                "endTime": int(el['startTime']),
                 "description": "Go straight",
                 "message": "Go straight",
-                "startTime": prev['endTime'],
+                "startTime": int(prev['endTime']),
                 })
                 resData.append(el)
             

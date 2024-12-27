@@ -397,7 +397,7 @@ def textBlurJob(data, route_data):
 
 @app.route('/check-health')
 def cpuCheck():
-    return "[Updated again 5] Server says hii", 200
+    return "[Updated again 7] Server says hii", 200
     # avg_cpu = get_average_cpu_utilization(interval=1, times=2)
     # logging.info(f'Average CPU => {avg_cpu}')
     # if avg_cpu > 80:
