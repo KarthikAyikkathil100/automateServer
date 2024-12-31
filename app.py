@@ -344,7 +344,6 @@ def textBlurJob(data, route_data):
         db_update_success = False
         route_id = data['route_id']
         # route_data = get_route_data(route_id)
-        
         json_file_path = route_data['textBlurJsonFileName']
         if json_file_path == None:
             raise Exception('Text blur file not found')
@@ -359,12 +358,14 @@ def textBlurJob(data, route_data):
         db_update_success = download_video_from_s3(bucket_name, f'{env}/routes/{file_name}', f'inputs/{file_name}')
         update_automation_time(route_id, env)
         if db_update_success == False:
-            raise Exception('Download failed')
+           raise Exception('Download failed')
+        
+        command = ['deface', f'inputs/{file_name}', '-o', f'inputs/{file_name}']
 
         print('Started downloading the JSON File to be processed')
         # Download the Google's Video Intelligence text-blur output stored in the AWS-S3
         json_file_name = json_file_path.split('/')[-1]
-        db_update_success = download_video_from_s3(bucket_name, json_file_path, f'text_json/{json_file_name}')
+        db_update_success = download_video_from_s3(bucket_name, f'{env}/{json_file_path}', f'text_json/{json_file_name}')
         if db_update_success == False:
             raise Exception('DB update failed')
 
@@ -377,11 +378,14 @@ def textBlurJob(data, route_data):
             return
         else:
             # Upload the text-blurred video to S3
-            db_update_success = upload_video_to_s3(f'final/{file_name}', bucket_name, None, env)
+            change_codec_command = ["ffmpeg", "-i", f'final/{file_name}', '-c:v', 'libx264', '-c:a', 'copy', f'final/codec_{file_name}']
+            result_dim = subprocess.run(change_codec_command, check=True, capture_output=True, text=True)    
+            db_update_success = upload_video_to_s3(f'final/codec_{file_name}', bucket_name, file_name, env)
             if db_update_success == False:
-                raise Exception('DB update failed')
+               raise Exception('DB update failed')
             # Remove file from local
             os.remove(f'final/{file_name}')
+            os.remove(f'final/codec_{file_name}')
             db_update_success = update_route_field(route_id, 'processStatus', 'TEXT_BLUR_SUCCESS', env)
             update_automation_time(route_id, env)
             if db_update_success == False:
@@ -397,7 +401,7 @@ def textBlurJob(data, route_data):
 
 @app.route('/check-health')
 def cpuCheck():
-    return "[Updated again 7] Server says hii", 200
+    return "[Updated again 10] Server says hii", 200
     # avg_cpu = get_average_cpu_utilization(interval=1, times=2)
     # logging.info(f'Average CPU => {avg_cpu}')
     # if avg_cpu > 80:

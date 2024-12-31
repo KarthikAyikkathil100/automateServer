@@ -9,8 +9,8 @@ def text_blur_main(file_name, json_file_name):
     try:
         # Reading the json file into a variable
         final_time = {}
-        # with open(f'text_json/{json_file_name}', 'r') as file:
-        #     final_time = json.load(file)        
+        with open(f'text_json/{json_file_name}', 'r') as file:
+            final_time = json.load(file)
         
         # Load video
         cap = cv2.VideoCapture(f'inputs/{file_name}')

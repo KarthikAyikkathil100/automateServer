@@ -19,7 +19,7 @@ directionMessages = {
     'S_RIGHT': 'Turn slight right',
 }
 
-finalData = []
+# finalData = []
 fps = 30
 
 # def get_chunks(xs: List[Any], size) -> List[List[Any]]:
@@ -139,11 +139,7 @@ def sliding_window_main(master, file_name, fps, total_frames):
         finalData = sliding_window(data, fps)
         # with open(f'multithread-res/{file_name}.txt', 'w', encoding='utf-8') as f:
         #     json.dump({'data': finalData}, f)
-        print('before process_sliding_window_output')
-        print(finalData)
         outputData = process_sliding_window_output(finalData)
-        print('after process_sliding_window_output')
-        print(outputData)
         prev = None
         straightStubData = []
         if (outputData[0])['directionIcon'] != 'straight' and (outputData[0])['startTime'] != 0:
@@ -251,8 +247,6 @@ def check_same_group(current_group_data: Dict[str, Any], data: Dict[str, Any]) -
     data_direction = data['directionIcon']
     current_direction = current_group_data['directionIcon']
     
-    print(f'data_direction => {data_direction}')
-    print(f'current_direction => {current_direction}')
 
     # Check if directions match, including STRAIGHT
     same_direction = (

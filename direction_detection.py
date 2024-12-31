@@ -37,7 +37,7 @@ directionMessages = {
 poolSize = cpuCount
 process_pool = ProcessPoolExecutor(poolSize)
 
-def getFrameSplits(nChunks, totalFrames):
+def getFrameSplits(nChunks, totalFrames, routeFramesParallelProcess):
     res = []
     init = 1
 
@@ -47,9 +47,9 @@ def getFrameSplits(nChunks, totalFrames):
             tempInit += 1
         res.append({
             'startTime': tempInit,
-            'endTime': tempInit + frameParallelProcess -1
+            'endTime': tempInit + routeFramesParallelProcess -1
         })
-        init = tempInit + frameParallelProcess -1
+        init = tempInit + routeFramesParallelProcess -1
     
     if init != totalFrames:
         res.append({
@@ -151,8 +151,10 @@ def directionDetection(file_name):
             fps = 30  # Default to 30 if FPS is not defined
 
         total_frames = int(cam.get(cv2.CAP_PROP_FRAME_COUNT))
-        chunks = math.floor(total_frames/frameParallelProcess) + 1 # Total frame segments which will be processed
-        frames_split_meta = getFrameSplits(chunks, total_frames)
+        routeFramesParallelProcess = int(total_frames*0.1)
+        print(f'routeFramesParallelProcess => {routeFramesParallelProcess}')
+        chunks = math.floor(total_frames/routeFramesParallelProcess) + 1 # Total frame segments which will be processed
+        frames_split_meta = getFrameSplits(chunks, total_frames, routeFramesParallelProcess)
         input_tuple = []
         i=3
         for frame_meta in frames_split_meta:
