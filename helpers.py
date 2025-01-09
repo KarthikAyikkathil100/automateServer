@@ -76,9 +76,6 @@ def download_video_from_s3(bucket_name, object_key, download_path, env = 'dev'):
     table = dynamodb.Table(target_table)
     # Create an S3 client using Boto3
     s3 = boto3.client('s3')
-    print(bucket_name)
-    print(object_key)
-    print(download_path)
     try:
         # Download the file from S3 to the specified local path
         s3.download_file(bucket_name, object_key, download_path)

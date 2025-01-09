@@ -22,18 +22,14 @@ def text_blur_main(file_name, json_file_name):
 
         out = cv2.VideoWriter(f'final/{file_name}', fourcc, frame_rate, (frame_width, frame_height))
 
-        print('frame_width => ', frame_width)
-        print('frame_height => ', frame_height)
-        print('frame_rate => ', frame_rate)
-
         total_frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         # Process video
         frame_counter = 0
         while cap.isOpened():
             ret, frame = cap.read()
             frame_counter += 1
-            if frame_counter%100 == 0:
-                print('processing frame => ', frame_counter)
+            # if frame_counter%100 == 0:
+            #     print('processing frame => ', frame_counter)
 
             if not ret:
                 break

@@ -13,6 +13,8 @@ import threading
 from text_blur import text_blur_main
 import logging
 logging.basicConfig(level=logging.INFO)
+import copy
+
 
 
 bucket_name = 'media.rtme.us'
@@ -163,7 +165,7 @@ def arrowAttachJob(data, route_data):
         logging.info('download of video started')
         download_video_from_s3(bucket_name, f'{env}/routes/{file_name}', f'blurred/{file_name}')
         logging.info('download done')
-        final_directions = route_data.get('newSourceCaption')
+        final_directions = copy.deepcopy(route_data.get('newSourceCaption'))
         logging.info('Arrow attachment start')
         arrow_attachment_main(file_name, final_directions)
 
@@ -360,9 +362,6 @@ def textBlurJob(data, route_data):
         if db_update_success == False:
            raise Exception('Download failed')
         
-        command = ['deface', f'inputs/{file_name}', '-o', f'inputs/{file_name}']
-
-        print('Started downloading the JSON File to be processed')
         # Download the Google's Video Intelligence text-blur output stored in the AWS-S3
         json_file_name = json_file_path.split('/')[-1]
         db_update_success = download_video_from_s3(bucket_name, f'{env}/{json_file_path}', f'text_json/{json_file_name}')
@@ -401,7 +400,7 @@ def textBlurJob(data, route_data):
 
 @app.route('/check-health')
 def cpuCheck():
-    return "[Updated again 10] Server says hii", 200
+    return "[Updated again 12] Server says hii", 200
     # avg_cpu = get_average_cpu_utilization(interval=1, times=2)
     # logging.info(f'Average CPU => {avg_cpu}')
     # if avg_cpu > 80:
@@ -501,8 +500,6 @@ def directionDetectionAPI():
             env = data['env']
         route_id = data['route_id']
         route_data = get_route_data(route_id, env)
-        print('route_data ==')
-        print(route_data)
         if route_data == None:
             raise Exception('Route not found')
         update_route_field(route_id, 'processStatus', 'DIRECTION_DETECTION_START', env)
@@ -540,6 +537,10 @@ def directionDetectionJob(data, route_data):
         # Store these directions in dynamo table
         store_detected_directions(final_directions, route_id, env)
         update_db_success = update_route_field(route_id, 'processStatus', 'DIRECTION_DETECTION_SUCCESS', env)
+        update_automation_time(route_id, env)
+        if update_db_success == False:
+            raise Exception('DB update failed')
+        update_db_success = update_route_field(route_id, 'actionStatus', 'Updated', env)
         update_automation_time(route_id, env)
         if update_db_success == False:
             raise Exception('DB update failed')
@@ -723,9 +724,3 @@ if __name__ == '__main__':
         logging.info(e)
 else:
     logging.info('not going in main')
-
-
-
-def Cloning(li1):
-    li_copy = li1[:]
-    return li_copy

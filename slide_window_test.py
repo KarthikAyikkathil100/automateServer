@@ -114420,17 +114420,11 @@ def check_time_validity(time: int) -> bool:
 def sliding_window(data, fps):
     try:
         chunks = get_chunks(data, fps * 1)
-        # print('chunk------')
-        # print(chunks[-1])
         final_data = []
         for chunk in chunks:
-            print('chunk ---------------------------')
-            print(chunk)
             verdict_meta = get_verdict(chunk)
             if verdict_meta.get('verdict'):
                 pv = process_verdict(chunk, verdict_meta)
-                # print('pv')
-                # print(pv)
                 if pv != None:
                     final_data.append(pv)
         return final_data

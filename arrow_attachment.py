@@ -22,7 +22,6 @@ def processDirections(master):
         for index, el in enumerate(master):
             t = el.get('startTime')
             tt = type(t)
-            print(f'startTime => {t}, tt => {tt}')
         total_len = len(master)
         processedDirections = []
 
@@ -137,7 +136,6 @@ def processDirections(master):
                             # processedDirections.append(temp)        
 
                 if len(processedDirections) > 0:
-                    print('casting..')
                     temp = copy(processedDirections[-1])
                     temp['startTime'] = int(temp['startTime'])
                     temp['endTime'] = int(temp['endTime'])
@@ -238,8 +236,6 @@ def arrow_attachment_main_v1(file_name, master):
         frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
-        print(f'frame_width => {frame_width}')
-        print(f'frame_height => {frame_height}')
         # Define the codec and create VideoWriter object to save the output video
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         out = cv2.VideoWriter(f'final/{file_name}', fourcc, fps, (frame_width, frame_height))
@@ -274,8 +270,6 @@ def arrow_attachment_main_v1(file_name, master):
         prev_start_time = None
         prev_end_time = None
         while cap.isOpened():
-            # print(f'frame_number => {frame_number}')
-            # logging.info(f'frame process => {frame_number}')
             ret, frame = cap.read()
             if not ret:
                 break
@@ -323,7 +317,6 @@ def arrow_attachment_main_v1(file_name, master):
                     arrow_start_time = current_time  # Reset the animation cycle for continuous movement
 
             if current_time > 186 and current_time < 208:
-               print(f'duration => {duration}, turn_duration => {turn_duration}, direction => {direction_string} ') 
             # Animate the current arrow (reset if changed, continue if not)
             frame = animate_arrow_approach(frame, current_arrow, current_time, sticky_arrows, sticky_position, duration, arrow_start_time, is_sticky, turn_duration, direction_string)
 
@@ -375,7 +368,6 @@ def arrow_attachment_main(file_name, master_pre):
             has_sticky = False
             fadeout = False
             if el.get('fadeout') == True:
-                print('fadeout True --- ')
                 fadeout = True
             if el.get('sticky') == True:
                 has_sticky = True
@@ -552,7 +544,6 @@ def overlay_arrow(frame, arrow_image, position, scale=1.0, opacity=1.0):
 def animate_arrow_approach(frame, arrow_image, current_time, sticky_arrows, sticky_position, duration=2, arrow_start_time=0, is_sticky=False, turn_duration=3, direction_string = 'STRAIGHT', fadeout = False):
     """Animate arrow moving left with fade-in and fade-out effects over specified time durations."""
     if arrow_image is None:
-        print('this one ?')
         return frame
 
     # Check if the arrow is sticky
@@ -583,7 +574,6 @@ def animate_arrow_approach(frame, arrow_image, current_time, sticky_arrows, stic
                 end_position = (int(width // 2), int(height * 0.8))
             elif any(np.array_equal(arrow_image, lft_arrow) for lft_arrow in left_turns):
                 # Left turns
-                print('here ==ll')
                 start_position = (int(width // 2), int(height * 0.6))
                 end_position = (int(width // 2), int(height * 0.8))
             elif any(np.array_equal(arrow_image, rht_arrow) for rht_arrow in right_turns):

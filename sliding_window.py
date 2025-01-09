@@ -17,6 +17,7 @@ directionMessages = {
     'S_LEFT': 'Turn slight left',
     'RIGHT': 'Turn right',
     'S_RIGHT': 'Turn slight right',
+    'END': 'Destination arrived'
 }
 
 # finalData = []
@@ -160,8 +161,6 @@ def sliding_window_main(master, file_name, fps, total_frames):
                         'directionIcon': 'straight',
                         'startTime': prev['endTime'],
                         'endTime': el['startTime'],
-                        # 'startFormat': format_seconds(prev['endTime']),
-                        # 'endFormat': format_seconds(el['startTime']),
                         'message': get_direction_mesage('straight'),
                     })
                     straightStubData.append(el)
@@ -170,15 +169,48 @@ def sliding_window_main(master, file_name, fps, total_frames):
             prev = el
         
         last_second_in_video = round(total_frames/fps)
-        if (straightStubData[-1])['endTime'] != last_second_in_video:
-            straightStubData.append({
-                'directionIcon': 'straight',
-                'message': get_direction_mesage('straight'),
-                'startTime': (straightStubData[-1])['endTime'],
-                'endTime': last_second_in_video,
-                # 'startFormat': format_seconds((straightStubData[-1])['endTime']),
-                # 'endFormat': format_seconds(last_second_in_video),
-            })
+        if len(straightStubData) > 0 and (straightStubData[-1])['endTime'] > last_second_in_video:
+            # Change the endTime of last detected direction to be => last_second_in_video
+            (straightStubData[-1])['endTime'] = last_second_in_video
+
+        # Set the 'END' Direction
+        if len(straightStubData) > 0:
+            if ((straightStubData[-1])['endTime'] - (straightStubData[-1])['startTime']) == 1:
+                if (straightStubData[-1])['endTime'] != last_second_in_video:
+                    # Append a new 'END' direction
+                    straightStubData.append({
+                        'directionIcon': 'END',
+                        'message': directionMessages.get('END'),
+                        'startTime': (straightStubData[-1])['endTime'],
+                        'endTime': last_second_in_video,
+                    })
+                else:
+                    # Change the last direction to 'END'
+                    (straightStubData[-1])['directionIcon'] = 'END'
+                # The last direction is of one sec only, replace the direction with 'END'
+            elif ((straightStubData[-1])['endTime'] - (straightStubData[-1])['startTime']) > 1:
+                # The last detected direction is of more than 1 seconds
+                if (straightStubData[-1])['endTime'] != last_second_in_video:
+                    # Append a new 'END' direction
+                    straightStubData.append({
+                        'directionIcon': 'END',
+                        'message': directionMessages.get('END'),
+                        'startTime': (straightStubData[-1])['endTime'],
+                        'endTime': last_second_in_video,
+                    })
+                else:
+                    # 1) Need to change the existing last detected direction, change the endTime = endTime - 1
+                    new_end_time = (straightStubData[-1])['endTime'] - 1
+                    (straightStubData[-1])['endTime'] = new_end_time
+                    # 2) And then append the 'END' direction
+                    straightStubData.append({
+                        'directionIcon': 'END',
+                        'message': directionMessages.get('END'),
+                        'startTime': new_end_time,
+                        'endTime': last_second_in_video,
+                    })
+
+
         
         if (straightStubData[0]['startTime'] != 0):
             straightStubData.insert(0, {
@@ -186,8 +218,6 @@ def sliding_window_main(master, file_name, fps, total_frames):
                 'message': get_direction_mesage('straight'),
                 'startTime': 0,
                 'endTime': straightStubData[0]['startTime'],
-                # 'startFormat': format_seconds(0),
-                # 'endFormat': format_seconds(straightStubData[0]['startTime']),
             })
         # finalDataRes = adjustTime(straightStubData)
         # if finalDataRes == None:

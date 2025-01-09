@@ -33,6 +33,7 @@ directionMessages = {
     'SLIGHT_LEFT': 'Turn slight left',
     'RIGHT': 'Turn right',
     'SLIGHT_RIGHT': 'Turn slight right',
+    'END': 'Destination arrived'
 }
 poolSize = cpuCount
 process_pool = ProcessPoolExecutor(poolSize)
@@ -150,7 +151,7 @@ def directionDetection(file_name):
         if fps == 0:
             fps = 30  # Default to 30 if FPS is not defined
 
-        total_frames = int(cam.get(cv2.CAP_PROP_FRAME_COUNT))
+        total_frames = round(cam.get(cv2.CAP_PROP_FRAME_COUNT))
         routeFramesParallelProcess = int(total_frames*0.1)
         print(f'routeFramesParallelProcess => {routeFramesParallelProcess}')
         chunks = math.floor(total_frames/routeFramesParallelProcess) + 1 # Total frame segments which will be processed
@@ -190,9 +191,6 @@ def directionDetection(file_name):
                 resDirection = el['directionIcon'].upper()
                 el['directionIcon'] = resDirection
                 el['description'] = directionMessages.get(resDirection)
-
-                print(el['directionIcon'])
-                print(el['description'])
             return finalOutput
     except Exception as e:
         logging.info('Error in directionDetection fn')

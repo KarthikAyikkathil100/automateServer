@@ -16328,8 +16328,6 @@ def process_sliding_window_output(data):
                     # 'startFormat': format_seconds(int(start)),
                     # 'endFormat': format_seconds(int(end)),
                 })
-            print('finall!!!!')
-            print(final_data)
         return final_data
     except Exception as e:
         print('Error while processing sliding window output')
