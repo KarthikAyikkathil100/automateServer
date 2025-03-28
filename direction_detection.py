@@ -10,8 +10,9 @@ import video
 import json  # Importing the json module
 from datetime import datetime
 import logging
+from sliding_window import sliding_window_main, getDirectionMessage
+from typing import List, TypedDict
 logging.basicConfig(level=logging.INFO)
-from sliding_window import sliding_window_main
 
 from helpers import  update_route_field
 
@@ -133,6 +134,39 @@ def process_vid_segment(meta):
         logging.info(e)
 
 
+class DirectionData(TypedDict):
+    startTime: int
+    endTime: int
+    directionIcon: str
+    message: str
+    description: str
+
+def finalDirectionGrouping(data: List[DirectionData]) -> List[DirectionData]:
+    try:
+        latestNewDirection = None
+        groupedData : List[DirectionData] = []
+        for index, directionInstance in enumerate(data):
+            if index == 0:
+                latestNewDirection = directionInstance
+            else:
+                if latestNewDirection.get('directionIcon') != directionInstance.get('directionIcon'):
+                    prevInstance = data[index-1]
+                    groupedData.append({
+                        'startTime': latestNewDirection.get('startTime'),
+                        'endTime': prevInstance.get('endTime'),
+                        'directionIcon': latestNewDirection.get('directionIcon'),
+                        'message': latestNewDirection.get('message'),
+                        'description': latestNewDirection.get('description')
+                    })
+                    latestNewDirection = directionInstance
+        if latestNewDirection != None:
+            groupedData.append(latestNewDirection)
+        
+        return groupedData
+    except Exception as e:
+        logging.info('Error in finalDirectionGrouping')
+        logging.info(e)
+        return False
 
 def directionDetection(file_name):
     # try:
@@ -190,7 +224,9 @@ def directionDetection(file_name):
             for _, el in enumerate(finalOutput):
                 resDirection = el['directionIcon'].upper()
                 el['directionIcon'] = resDirection
-                el['description'] = directionMessages.get(resDirection)
+                el['description'] = getDirectionMessage(resDirection)
+            
+            finalOutput = finalDirectionGrouping(finalOutput)
             return finalOutput
     except Exception as e:
         logging.info('Error in directionDetection fn')

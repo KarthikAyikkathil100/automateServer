@@ -316,7 +316,6 @@ def arrow_attachment_main_v1(file_name, master):
                 if direction_string != None and direction_string == 'STRAIGHT':
                     arrow_start_time = current_time  # Reset the animation cycle for continuous movement
 
-            if current_time > 186 and current_time < 208:
             # Animate the current arrow (reset if changed, continue if not)
             frame = animate_arrow_approach(frame, current_arrow, current_time, sticky_arrows, sticky_position, duration, arrow_start_time, is_sticky, turn_duration, direction_string)
 

@@ -1,6 +1,8 @@
 import json
 from typing import List, Dict, Any
 import os
+import random
+
 
 threshold = 90
 directionTypes = {
@@ -12,13 +14,27 @@ directionTypes = {
 }
 
 directionMessages = {
-    'STRAIGHT': 'Go straight',
-    'LEFT': 'Turn left',
-    'S_LEFT': 'Turn slight left',
-    'RIGHT': 'Turn right',
-    'S_RIGHT': 'Turn slight right',
-    'END': 'Destination arrived'
+    'STRAIGHT': ['Go straight', 'Continue forward', 'Keep going straight', 'Proceed forward', 'Walk straight ahead', 'Head forward'],
+    'LEFT': ['Turn left', 'Take a left', 'Make a left turn', 'Go left', 'Turn to your left', 'Head left', 'Move left'],
+    'S_LEFT': ['Turn slight left', 'Take a slight left', 'Make a gentle left turn', 'Drift left slightly', 'Lean a little left', 'Gradually turn left'],
+    'RIGHT': ['Turn right', 'Take a right', 'Make a right turn', 'Go right', 'Turn to your right', 'Head right', 'Move right'],
+    'S_RIGHT': ['Turn slight right', 'Take a slight right', 'Make a gentle right turn', 'Drift right slightly', 'Lean a little right', 'Gradually turn right'],
+    'END': ['Destination arrived', 'You\'ve arrived', 'Destination reached', 'You\'re at your destination'],
 }
+
+
+def getDirectionMessage(direction: str) -> str:
+    try:
+        validDirections = list(directionMessages.keys())
+        if direction not in validDirections:
+            return 'Unknown direction'
+        
+        validMessages = directionMessages.get(direction)
+        randomIndex = random.randrange(0, len(validMessages))
+        return validMessages[randomIndex]
+    except Exception as e:
+        print(e)
+
 
 # finalData = []
 fps = 30
@@ -180,7 +196,7 @@ def sliding_window_main(master, file_name, fps, total_frames):
                     # Append a new 'END' direction
                     straightStubData.append({
                         'directionIcon': 'END',
-                        'message': directionMessages.get('END'),
+                        'message': getDirectionMessage('END'),
                         'startTime': (straightStubData[-1])['endTime'],
                         'endTime': last_second_in_video,
                     })
@@ -194,7 +210,7 @@ def sliding_window_main(master, file_name, fps, total_frames):
                     # Append a new 'END' direction
                     straightStubData.append({
                         'directionIcon': 'END',
-                        'message': directionMessages.get('END'),
+                        'message': getDirectionMessage('END'),
                         'startTime': (straightStubData[-1])['endTime'],
                         'endTime': last_second_in_video,
                     })
@@ -205,7 +221,7 @@ def sliding_window_main(master, file_name, fps, total_frames):
                     # 2) And then append the 'END' direction
                     straightStubData.append({
                         'directionIcon': 'END',
-                        'message': directionMessages.get('END'),
+                        'message': getDirectionMessage('END'),
                         'startTime': new_end_time,
                         'endTime': last_second_in_video,
                     })
