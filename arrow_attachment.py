@@ -203,29 +203,7 @@ def load_image(path):
         logging.info(f"Error: File not found at {path}")
         return None
 
-# Load arrow images
-arrow_right = load_image('images/right-arrow.png')
-arrow_left = load_image('images/left-arrow.png')
-arrow_straight = load_image('images/straight-arrow.png')
-arrow_slight_right = load_image('images/slight-right-arrow.png')
-arrow_slight_left = load_image('images/slight-left-arrow.png')
 
-
-left_turns = [arrow_left, arrow_slight_left]
-right_turns = [arrow_right, arrow_slight_right]
-
-
-def get_direction_icon(direction):
-    if (direction == 'LEFT'):
-        return arrow_left
-    elif direction == 'SLIGHT_LEFT':
-        return arrow_slight_left
-    elif direction == 'RIGHT':
-        return arrow_right
-    elif direction == 'SLIGHT_RIGHT':
-        return arrow_slight_right
-    else:
-        return arrow_straight 
 
 def arrow_attachment_main_v1(file_name, master):
     try: 
@@ -345,8 +323,38 @@ def arrow_attachment_main_v1(file_name, master):
         except Exception as e:
             logging.info('Error while updating DB')
 
-def arrow_attachment_main(file_name, master_pre):
-    try: 
+def arrow_attachment_main(file_name, master_pre, hex_color):
+    arrow_right = None
+    arrow_left = None
+    arrow_straight = None
+    arrow_slight_right = None
+    arrow_slight_left = None 
+    try:
+        if hex_color != None:
+            arrow_right = load_image(f'images/{hex_color}-right-arrow.png')
+            arrow_left = load_image(f'images/{hex_color}-left-arrow.png')
+            arrow_straight = load_image(f'images/{hex_color}-straight-arrow.png')
+            arrow_slight_right = load_image(f'images/{hex_color}-slight-right-arrow.png')
+            arrow_slight_left = load_image(f'images/{hex_color}-slight-left-arrow.png')
+        else:
+            arrow_right = load_image(f'old_arrows/right-arrow.png')
+            arrow_left = load_image(f'old_arrows/left-arrow.png')
+            arrow_straight = load_image(f'old_arrows/straight-arrow.png')
+            arrow_slight_right = load_image(f'old_arrows/slight-right-arrow.png')
+            arrow_slight_left = load_image(f'old_arrows/slight-left-arrow.png')
+        
+        def get_direction_icon(direction):
+            if (direction == 'LEFT'):
+                return arrow_left
+            elif direction == 'SLIGHT_LEFT':
+                return arrow_slight_left
+            elif direction == 'RIGHT':
+                return arrow_right
+            elif direction == 'SLIGHT_RIGHT':
+                return arrow_slight_right
+            else:
+                return arrow_straight
+ 
         master = processDirections(master_pre)
 
         # master = master_pre
@@ -394,6 +402,11 @@ def arrow_attachment_main(file_name, master_pre):
 
         prev_start_time = None
         prev_end_time = None
+
+        turn_arrows = {
+            "left_turns": [arrow_left, arrow_slight_left],
+            "right_turns": [arrow_right, arrow_slight_right]
+        }
         while cap.isOpened():
             # print(f'frame_number => {frame_number}')
             # logging.info(f'frame process => {frame_number}')
@@ -449,7 +462,7 @@ def arrow_attachment_main(file_name, master_pre):
                     arrow_start_time = current_time  # Reset the animation cycle for continuous movement
             
             # Animate the current arrow (reset if changed, continue if not)
-            frame = animate_arrow_approach(frame, current_arrow, current_time, sticky_arrows, sticky_position, duration, arrow_start_time, is_sticky, turn_duration, direction_string, current_fade_out)
+            frame = animate_arrow_approach(frame, current_arrow, current_time, sticky_arrows, sticky_position, turn_arrows, duration, arrow_start_time, is_sticky, turn_duration, direction_string, current_fade_out,)
 
             # Write the frame to the output video
             out.write(frame)
@@ -478,8 +491,9 @@ def arrow_attachment_main(file_name, master_pre):
         #     logging.info('Error while updating DB')
 
 # Function to overlay an image on the video frame
-def overlay_arrow(frame, arrow_image, position, scale=1.0, opacity=1.0):
+def overlay_arrow(frame, arrow_image, position, turn_arrows, scale=1.0, opacity=1.0):
     try:
+        right_turns = turn_arrows['right_turns']
         if arrow_image is None:
             return frame
         
@@ -540,11 +554,13 @@ def overlay_arrow(frame, arrow_image, position, scale=1.0, opacity=1.0):
 
 
 
-def animate_arrow_approach(frame, arrow_image, current_time, sticky_arrows, sticky_position, duration=2, arrow_start_time=0, is_sticky=False, turn_duration=3, direction_string = 'STRAIGHT', fadeout = False):
+def animate_arrow_approach(frame, arrow_image, current_time, sticky_arrows, sticky_position, turn_arrows, duration=2, arrow_start_time=0, is_sticky=False, turn_duration=3, direction_string = 'STRAIGHT', fadeout = False):
     """Animate arrow moving left with fade-in and fade-out effects over specified time durations."""
     if arrow_image is None:
         return frame
 
+    left_turns = turn_arrows['left_turns']
+    right_turns = turn_arrows['right_turns']
     # Check if the arrow is sticky
     if False:  # Placeholder, adjust if sticky logic is needed
         scale = 0.4  # Sticky scale
@@ -662,7 +678,7 @@ def animate_arrow_approach(frame, arrow_image, current_time, sticky_arrows, stic
             #     else:
             #         opacity_progress = 0  # Fully transparent after fade-out duration
     # Overlay the arrow on the frame with calculated scale, position, and opacity
-    frame = overlay_arrow(frame, arrow_image, current_position, scale=scale, opacity=opacity_progress)
+    frame = overlay_arrow(frame, arrow_image, current_position, turn_arrows, scale=scale, opacity=opacity_progress)
     
     return frame
 

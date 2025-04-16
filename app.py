@@ -7,10 +7,11 @@ from flask import Flask, request, jsonify
 from blur_automate import blurVideo
 from direction_detection import directionDetection
 from botocore.exceptions import ClientError
-from helpers import download_video_from_s3, get_route_data, upload_video_to_s3, store_detected_directions, update_route_field, get_average_cpu_utilization, update_automation_time
+from helpers import download_file_from_s3, get_route_data, upload_video_to_s3, store_detected_directions, update_route_field, check_multiple_objects, update_automation_time, download_multiple_files, get_location_data
 from arrow_attachment import arrow_attachment_main
 import threading
 from text_blur import text_blur_main
+from tint_color import tint_image
 import logging
 logging.basicConfig(level=logging.INFO)
 import copy
@@ -34,7 +35,7 @@ logging.info('Inside the server')
 #         start_time = datetime.now()
 #         # 1) Download the video from s3 and save in local
 #         file_name = 'dubai_small_dim.mp4'
-#         # download_video_from_s3(bucket_name, f'{file_name}', f'inputs/{file_name}')
+#         # download_file_from_s3(bucket_name, f'{file_name}', f'inputs/{file_name}')
 
 #         # 2) Blur the video
 #         blurVideo(file_name)
@@ -81,7 +82,7 @@ logging.info('Inside the server')
 #             }
 #             return jsonify(data), 404 
 #         file_name = video_url.split('/')[-1]
-#         download_video_from_s3(bucket_name, f'{file_name}', f'inputs/{file_name}')
+#         download_file_from_s3(bucket_name, f'{file_name}', f'inputs/{file_name}')
         
 #         # 2) Blur the video
 #         update_route_field(route_id, 'processStatus', 'BLUR_START')
@@ -113,6 +114,48 @@ logging.info('Inside the server')
 #             os.remove(f'blurred/{file_name}')
 #         except Exception as e:
 #             print('Error removing file')
+
+def manageColoredArrows(location_color_hex, env='dev'):
+    try:
+        if location_color_hex == None: return None
+        
+        hex_color = location_color_hex.lstrip('#')
+        file_path = os.path.join('images', f'{hex_color}-left-arrow.png')
+        if os.path.isfile(file_path):
+            print('Image found locally')
+        else:
+            keys = [
+                f'{env}/location_arrows/{hex_color}-left-arrow.png',
+                f'{env}/location_arrows/{hex_color}-right-arrow.png',
+                f'{env}/location_arrows/{hex_color}-straight-arrow.png',
+                f'{env}/location_arrows/{hex_color}-slight-left-arrow.png',
+                f'{env}/location_arrows/{hex_color}-slight-right-arrow.png',
+            ]
+            res = check_multiple_objects(bucket_name, keys)
+            all_objects_available = True
+            for value in res.values():
+                if value == False:
+                    all_objects_available = False
+                    break
+            if all_objects_available == True:
+                download_res = download_multiple_files(bucket_name, keys, 'images')
+                all_objects_saved = True
+                for value in download_res.values():
+                    if value == False:
+                        all_objects_saved = False
+                        break
+                print('Image found in S3')
+                if all_objects_saved == False:
+                    arrow_color_success = tint_image(location_color_hex, env)
+                    if arrow_color_success != True:
+                        raise Exception('Arrow color error')    
+            else:
+                print('Arrow file needs to be generated')
+                arrow_color_success = tint_image(location_color_hex, env)
+                if arrow_color_success != True:
+                    raise Exception('Arrow color error')
+    except Exception as e:
+        raise Exception('Arrow color error')
 
 
 @app.route('/arrow-attach', methods=['POST'])
@@ -163,19 +206,30 @@ def arrowAttachJob(data, route_data):
         video_url = route_data.get('videoURL')
         file_name = video_url.split('/')[-1]
         logging.info('download of video started')
-        download_video_from_s3(bucket_name, f'{env}/routes/{file_name}', f'blurred/{file_name}')
+        download_file_from_s3(bucket_name, f'{env}/routes/{file_name}', f'blurred/{file_name}')
         logging.info('download done')
         final_directions = copy.deepcopy(route_data.get('newSourceCaption'))
+        print('final_directions => ', final_directions)
         logging.info('Arrow attachment start')
-        arrow_attachment_main(file_name, final_directions)
+        location_id = route_data.get('locId')
+        location_data = get_location_data(location_id, env, ['id', 'locationColor'])
+        location_color_hex = None
+        if location_data != None:
+            color = location_data.get('locationColor')
+            if color != None:
+                location_color_hex = color
 
-        logging.info('part 1 done ----')
+        hex_color = None
+        if location_color_hex != None:
+            hex_color = location_color_hex.lstrip('#')
+            manageColoredArrows(location_color_hex, env)
+
+        arrow_attachment_main(file_name, final_directions, hex_color)
 
         # Change the video codec for making the video small in size
         # ffmpeg -i input.mp4 -c:v libx264 -c:a copy output_h264.mp4
         change_codec_command = ["ffmpeg", "-i", f'final/{file_name}', '-c:v', 'libx264', '-c:a', 'copy', f'final/codec_{file_name}']
         result_dim = subprocess.run(change_codec_command, check=True, capture_output=True, text=True)
-        logging.info('part 2 done ----')
         logging.info("Command Output codec:", result_dim.stdout)
         logging.info("Command Error Output codec:", result_dim.stderr)
         update_automation_time(route_id, env)
@@ -248,7 +302,7 @@ def arrowAttachJob(data, route_data):
 #             return jsonify(res_dat), 404
 #         file_name = video_url.split('/')[-1]
 #         logging.info('download of video started')
-#         download_video_from_s3(bucket_name, f'{file_name}', f'blurred/{file_name}')
+#         download_file_from_s3(bucket_name, f'{file_name}', f'blurred/{file_name}')
 #         logging.info('download done')
 #         final_directions = route_data.get('detectedDirections')
 #         if final_directions == None:
@@ -349,7 +403,6 @@ def textBlurJob(data, route_data):
         json_file_path = route_data['textBlurJsonFileName']
         if json_file_path == None:
             raise Exception('Text blur file not found')
-            print('Text blur file not found')
         
         video_url = route_data.get('videoURL')
         if video_url == None:
@@ -357,14 +410,14 @@ def textBlurJob(data, route_data):
             print('Route Video not found')
         file_name = video_url.split('/')[-1]
         print('Started downloading the Video File to be processed')
-        db_update_success = download_video_from_s3(bucket_name, f'{env}/routes/{file_name}', f'inputs/{file_name}')
+        db_update_success = download_file_from_s3(bucket_name, f'{env}/routes/{file_name}', f'inputs/{file_name}')
         update_automation_time(route_id, env)
         if db_update_success == False:
            raise Exception('Download failed')
         
         # Download the Google's Video Intelligence text-blur output stored in the AWS-S3
         json_file_name = json_file_path.split('/')[-1]
-        db_update_success = download_video_from_s3(bucket_name, f'{env}/{json_file_path}', f'text_json/{json_file_name}')
+        db_update_success = download_file_from_s3(bucket_name, f'{env}/{json_file_path}', f'text_json/{json_file_name}')
         if db_update_success == False:
             raise Exception('DB update failed')
 
@@ -461,7 +514,7 @@ def faceBlurJob(data, route_data):
             raise Exception('Update DB failed')
         video_url = route_data['videoURL']
         file_name = video_url.split('/')[-1]
-        download_success = download_video_from_s3(bucket_name, f'{env}/routes/{file_name}', f'inputs/{file_name}')
+        download_success = download_file_from_s3(bucket_name, f'{env}/routes/{file_name}', f'inputs/{file_name}')
         if download_success == False:
             raise Exception('download failed')
 
@@ -527,7 +580,7 @@ def directionDetectionJob(data, route_data):
         route_id = route_data['id']
         video_url = route_data['videoURL']
         file_name = video_url.split('/')[-1]
-        download_success = download_video_from_s3(bucket_name, f'{env}/routes/{file_name}', f'blurred/{file_name}')
+        download_success = download_file_from_s3(bucket_name, f'{env}/routes/{file_name}', f'blurred/{file_name}')
         if download_success == False:
             raise Exception('download failed')
         logging.info('Starting the direction detection')
@@ -587,7 +640,7 @@ def processRouteAPI():
                 return jsonify(res_dat), 404
             video_url = route_data['videoURL']
             file_name = video_url.split('/')[-1]
-            download_video_from_s3(bucket_name, f'{file_name}', f'inputs/{file_name}')
+            download_file_from_s3(bucket_name, f'{file_name}', f'inputs/{file_name}')
 
             # 2) Blur the video
             blurSuccess = blurVideo(file_name)
@@ -610,7 +663,7 @@ def processRouteAPI():
                 return jsonify(res_dat), 404
             video_url = route_data['videoURL']
             file_name = video_url.split('/')[-1]
-            download_video_from_s3(bucket_name, f'{file_name}', f'blurred/{file_name}')
+            download_file_from_s3(bucket_name, f'{file_name}', f'blurred/{file_name}')
             logging.info('Starting the direction detection')
             final_directions = directionDetection(file_name)
             # Store these directions in dynamo table
@@ -629,7 +682,7 @@ def processRouteAPI():
             video_url = route_data['videoURL']
             file_name = video_url.split('/')[-1]
             logging.info('download of video started')
-            download_video_from_s3(bucket_name, f'{file_name}', f'blurred/{file_name}')
+            download_file_from_s3(bucket_name, f'{file_name}', f'blurred/{file_name}')
             logging.info('download done')
             final_directions = route_data.get('detectedDirections')
             logging.info('got directions')
@@ -689,7 +742,7 @@ def processRoute():
         if blur == True:
             # Need to run blur script, direction detection script and submit to route DB
             # 1) Download the video from s3 and save in local
-            s3_err = download_video_from_s3(bucket_name, f'{file_name}', f'inputs/{file_name}')
+            s3_err = download_file_from_s3(bucket_name, f'{file_name}', f'inputs/{file_name}')
             if s3_success == False:
                 return False, 'Error while downloading route file'
 

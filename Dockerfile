@@ -27,7 +27,9 @@ COPY sliding_window.py .
 COPY arrow_attachment.py .
 COPY helpers.py .
 COPY text_blur.py .
+COPY tint_color.py .
 COPY images/ ./images/
+COPY old_arrows/ ./old_arrows/
 
 # Verify the installation
 RUN aws --version

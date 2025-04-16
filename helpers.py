@@ -1,6 +1,7 @@
 import boto3
 import logging
 logging.basicConfig(level=logging.INFO)
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import psutil
 import time
 # Initialize DynamoDB resource using boto3
@@ -71,9 +72,7 @@ def update_route_field(key, field, value, env = 'dev'):
 
 
 
-def download_video_from_s3(bucket_name, object_key, download_path, env = 'dev'):
-    target_table = f'{env}-{table_name}'
-    table = dynamodb.Table(target_table)
+def download_file_from_s3(bucket_name, object_key, download_path):
     # Create an S3 client using Boto3
     s3 = boto3.client('s3')
     try:
@@ -84,6 +83,56 @@ def download_video_from_s3(bucket_name, object_key, download_path, env = 'dev'):
     except Exception as e:
         logging.info(f"Error downloading file: {e}")
         return False
+
+def s3_file_exists(bucket_name, object_key):
+    s3 = boto3.client('s3')
+    try:
+        s3.head_object(Bucket=bucket_name, Key=object_key)
+        return True
+    except Exception as e:
+        return False
+    
+
+def check_exists(bucket, key):
+    s3 = boto3.client('s3')
+    try:
+        s3.head_object(Bucket=bucket, Key=key)
+        return key, True
+    except Exception as e:
+        return key, False
+
+def check_multiple_objects(bucket, keys, max_workers=10):
+    results = {}
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {executor.submit(check_exists, bucket, key): key for key in keys}
+        for future in futures:
+            key, exists = future.result()
+            results[key] = exists
+    return results
+
+def download_multiple_files(bucket_name, files_to_download, download_dir, max_workers=10):
+    """
+    :param bucket_name: S3 bucket name
+    :param files_to_download: List of object keys (file names in S3)
+    :param download_dir: Local directory to save downloaded files
+    :param max_workers: Number of parallel threads
+    :return: Dict of {file_name: True/False}
+    """
+    results = {}
+
+    def download_wrapper(object_key):
+        local_path = f"{download_dir}/{object_key.split('/')[-1]}"  # Customize as needed
+        success = download_file_from_s3(bucket_name, object_key, local_path)
+        return object_key, success
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = [executor.submit(download_wrapper, key) for key in files_to_download]
+        for future in as_completed(futures):
+            key, success = future.result()
+            results[key] = success
+
+    return results
+
 
 def upload_video_to_s3(file_path, bucket_name, object_name=None, env='dev'):
     """
@@ -116,6 +165,40 @@ def upload_video_to_s3(file_path, bucket_name, object_name=None, env='dev'):
         logging.info(f"Error uploading file: {e}")
         return False
 
+
+def upload_file_to_s3(file_path, bucket_name, object_name):
+    s3 = boto3.client('s3')
+    try:
+        s3.upload_file(file_path, bucket_name, object_name)
+        logging.info(f"Uploaded: {file_path} → s3://{bucket_name}/{object_name}")
+        return True
+    except Exception as e:
+        logging.error(f"Error uploading {file_path}: {e}")
+        return False
+
+def upload_multiple_files(file_object_pairs, bucket_name, max_workers=10):
+    """
+    :param file_object_pairs: List of tuples: (local_path, s3_object_key)
+    :param bucket_name: Target S3 bucket
+    :param max_workers: Number of parallel uploads
+    """
+    results = {}
+
+    def upload_wrapper(file_path, object_key):
+        success = upload_file_to_s3(file_path, bucket_name, object_key)
+        return file_path, success
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = [
+            executor.submit(upload_wrapper, file_path, object_key)
+            for file_path, object_key in file_object_pairs
+        ]
+        for future in as_completed(futures):
+            file_path, success = future.result()
+            results[file_path] = success
+
+    return results
+
 def get_average_cpu_utilization(interval=1, times=5):
     cpu_usages = []
     
@@ -136,4 +219,37 @@ def update_automation_time(route_id, env='dev'):
         update_route_field(route_id, 'automationUpdateAt', current_time, env)
     except Exception as e:
         print('Error while storing time')
+        return None
+
+
+def get_location_data(item_id, env='dev', fields=['id']):
+    try:
+        target_table = f'{env}-Locations'
+        table = dynamodb.Table(target_table)
+
+        params = {
+            'Key': {'id': item_id}
+        }
+
+        if fields:
+            expression_attribute_names = {}
+            projection_expression_parts = []
+
+            for field in fields:
+                alias = f'#{field}'
+                expression_attribute_names[alias] = field
+                projection_expression_parts.append(alias)
+
+            params['ProjectionExpression'] = ', '.join(projection_expression_parts)
+            params['ExpressionAttributeNames'] = expression_attribute_names
+
+        response = table.get_item(**params)
+
+        if 'Item' not in response:
+            return None
+
+        return response['Item']
+
+    except Exception as e:
+        logging.info(f'Error while fetching route data: {e}')
         return None
