@@ -388,11 +388,14 @@ def arrow_attachment_main(file_name, master_pre, hex_color):
         sticky_position = (frame_width * 0.5, int(frame_height // 2))  # Fixed position for sticky arrows
 
         # Process the video frame by frame
+        duration = 3  # Duration for each arrow approach effect (3 seconds)
         frame_number = 0
         current_arrow = None
         arrow_start_time = 0  # Tracks when the current arrow starts
-        duration = 3  # Duration for each arrow approach effect (3 seconds)
         turn_duration = 3
+
+        secondary_arrow_start_time = None
+        secondary_arrow_end_time = None
 
         # Add a flag to track if the arrow image changed
         arrow_changed = False
@@ -436,13 +439,14 @@ def arrow_attachment_main(file_name, master_pre, hex_color):
                     if sticky == True:
                         is_sticky = True
                     if direction_name == 'STRAIGHT': 
-                        duration = 3
+                        duration = 4
                     break
             # If the arrow changes, reset the animation
             if new_arrow is not None:
                 if current_arrow is None or not np.array_equal(current_arrow, new_arrow) or (prev_direction != None and prev_sticky != None and (prev_sticky != is_sticky or prev_direction != direction_string)) or (current_start_time != prev_start_time):
                     current_arrow = new_arrow
                     arrow_start_time = current_time  # Reset animation start time
+                    secondary_arrow_start_time = current_time - 2
                     arrow_changed = True  # Mark that the arrow has changed
                 else:
                     arrow_changed = False  # No change in arrow
@@ -461,8 +465,18 @@ def arrow_attachment_main(file_name, master_pre, hex_color):
                 if direction_string != None and direction_string == 'STRAIGHT':
                     arrow_start_time = current_time  # Reset the animation cycle for continuous movement
             
+            if (current_time - secondary_arrow_start_time) >= duration:
+                if direction_string != None and direction_string == 'STRAIGHT':
+                    secondary_arrow_start_time = current_time  # Reset the animation cycle for continuous movement
+            
+            if direction_string == 'STRAIGHT':
+                duration = 4
+
             # Animate the current arrow (reset if changed, continue if not)
-            frame = animate_arrow_approach(frame, current_arrow, current_time, sticky_arrows, sticky_position, turn_arrows, duration, arrow_start_time, is_sticky, turn_duration, direction_string, current_fade_out,)
+            frame = animate_arrow_approach(frame, current_arrow, current_time, sticky_arrows, sticky_position, turn_arrows, duration, arrow_start_time, is_sticky, turn_duration, direction_string, current_fade_out, is_tethered=False)
+            
+            if direction_string == 'STRAIGHT':
+                frame = animate_arrow_approach(frame, current_arrow, current_time, sticky_arrows, sticky_position, turn_arrows, duration, secondary_arrow_start_time , is_sticky, turn_duration, direction_string, current_fade_out, is_tethered=True)
 
             # Write the frame to the output video
             out.write(frame)
@@ -553,8 +567,8 @@ def overlay_arrow(frame, arrow_image, position, turn_arrows, scale=1.0, opacity=
         return e
 
 
-
-def animate_arrow_approach(frame, arrow_image, current_time, sticky_arrows, sticky_position, turn_arrows, duration=2, arrow_start_time=0, is_sticky=False, turn_duration=3, direction_string = 'STRAIGHT', fadeout = False):
+green_ar = load_image('images/01ff0d-straight-arrow.png')
+def animate_arrow_approach(frame, arrow_image, current_time, sticky_arrows, sticky_position, turn_arrows, duration=2, arrow_start_time=0, is_sticky=False, turn_duration=3, direction_string = 'STRAIGHT', fadeout = False, is_tethered = False):
     """Animate arrow moving left with fade-in and fade-out effects over specified time durations."""
     if arrow_image is None:
         return frame
@@ -568,7 +582,7 @@ def animate_arrow_approach(frame, arrow_image, current_time, sticky_arrows, stic
         opacity_progress = 1.0  # Fully opaque for sticky arrows
     else:
         # Define start and end scale values (moderate scaling)
-        start_scale = 0.2  # Arrow appears smaller (far away)
+        start_scale = 0.1  # Arrow appears smaller (far away)
         end_scale = 0.6   # Arrow appears at a reasonable size (closer)
         elapsed_time = current_time - arrow_start_time  # Time since the arrow started
         
@@ -613,8 +627,12 @@ def animate_arrow_approach(frame, arrow_image, current_time, sticky_arrows, stic
                 start_position = (int(width * 1), int(height * 0.7))  
                 end_position = (-100, int(height * 0.7))  
             else:
-                start_position = (int(width * 0.5), int(height * 0.8)) 
-                end_position = (int(width * 0.5), height + 100)
+                if is_tethered == True:
+                    start_position = (int(width * 0.5), int(height * 0.65)) 
+                    end_position = (int(width * 0.5), height + 100)
+                else:
+                    start_position = (int(width * 0.5), int(height * 0.65)) 
+                    end_position = (int(width * 0.5), height + 200)
 
 
         # Interpolate scale and position based on progress
@@ -678,7 +696,10 @@ def animate_arrow_approach(frame, arrow_image, current_time, sticky_arrows, stic
             #     else:
             #         opacity_progress = 0  # Fully transparent after fade-out duration
     # Overlay the arrow on the frame with calculated scale, position, and opacity
-    frame = overlay_arrow(frame, arrow_image, current_position, turn_arrows, scale=scale, opacity=opacity_progress)
+    mod_arro = arrow_image
+    # if is_tethered == True:
+    #     mod_arro = green_ar
+    frame = overlay_arrow(frame, mod_arro, current_position, turn_arrows, scale=scale, opacity=opacity_progress)
     
     return frame
 
@@ -799,7 +820,6 @@ def animate_arrow_approach_v2(frame, arrow_image, current_time, sticky_arrows, s
     
     return frame
 
- 
 # Function to animate arrow moving towards the viewer with fade-in effect and reset on switch
 def animate_arrow_approach_v1(frame, arrow_image, current_time, sticky_arrows, sticky_position, duration=3, arrow_start_time=0):
     """Animate arrow moving closer with fade-in effect over the first 0.6 seconds, reset position on switch."""
@@ -845,13 +865,199 @@ def animate_arrow_approach_v1(frame, arrow_image, current_time, sticky_arrows, s
     return frame
 
 
+master =[
+  {
+    "description": "Go straight for about :{distance}",
+    "startTime": "0",
+    "endTime": "21",
+    "id": "e248d278-a02f-4243-865e-6de45ea99b6d",
+    "distance": 120,
+    "directionIcon": "STRAIGHT"
+  },
+  {
+    "description": "Turn left",
+    "startTime": "21",
+    "endTime": "22",
+    "id": "b07371d4-c801-47c5-b4ba-2ffb02c1b7c9",
+    "distance": None,
+    "directionIcon": "LEFT"
+  },
+  {
+    "description": "Continue straight to the end of this hall",
+    "startTime": "22",
+    "endTime": "49",
+    "id": "836d3ab0-6716-4c43-87a4-d0a54dd9ba9f",
+    "distance": None,
+    "directionIcon": "STRAIGHT"
+  },
+  {
+    "description": "Turn left",
+    "startTime": "49",
+    "endTime": "51",
+    "id": "c242bb34-3234-492a-ab43-5886300120be",
+    "distance": None,
+    "directionIcon": "LEFT"
+  },
+  {
+    "description": "Go straight for about :{distance}",
+    "startTime": "51",
+    "endTime": "88",
+    "id": "5e1409de-0f9b-4aad-866c-f5a20c1740af",
+    "distance": 200,
+    "directionIcon": "STRAIGHT"
+  },
+  {
+    "description": "Turn right",
+    "startTime": "89",
+    "endTime": "91",
+    "id": "334c4090-51ad-4a0f-94b8-3dceda1e9098",
+    "distance": None,
+    "directionIcon": "RIGHT"
+  },
+  {
+    "description": "Go straight",
+    "startTime": "91",
+    "endTime": "100",
+    "id": "120c432a-cae0-4b11-ac1a-4f2ddf871afb",
+    "distance": None,
+    "directionIcon": "STRAIGHT"
+  },
+  {
+    "description": "Turn left",
+    "startTime": "100",
+    "endTime": "103",
+    "id": "ba34075d-d581-4ff3-8cd2-c4a417f61dd4",
+    "distance": None,
+    "directionIcon": "LEFT"
+  },
+  {
+    "description": "Go straight",
+    "startTime": "103",
+    "endTime": "116",
+    "id": "04fa9db1-a487-497d-b88a-1495d4eeb34a",
+    "distance": None,
+    "directionIcon": "STRAIGHT"
+  },
+  {
+    "description": "Turn slight left",
+    "startTime": "117",
+    "endTime": "119",
+    "id": "8ae84e6c-c460-4ec7-ac18-d611652d5eea",
+    "distance": None,
+    "directionIcon": "SLIGHT_LEFT"
+  },
+  {
+    "description": "Go straight",
+    "startTime": "119",
+    "endTime": "130",
+    "id": "19309177-d97f-40da-9f1e-4496728c02f3",
+    "distance": None,
+    "directionIcon": "STRAIGHT"
+  },
+  {
+    "description": "Turn right",
+    "startTime": "130",
+    "endTime": "135",
+    "id": "9666079f-ec1b-4cfb-977b-9775a01c128e",
+    "distance": None,
+    "directionIcon": "RIGHT"
+  },
+  {
+    "description": "Go straight",
+    "startTime": "135",
+    "endTime": "157",
+    "id": "1771a09f-510e-432e-ac02-a8665404426f",
+    "distance": None,
+    "directionIcon": "STRAIGHT"
+  },
+  {
+    "description": "Go straight",
+    "startTime": "157",
+    "endTime": "158",
+    "id": "9f82751f-6479-4279-a378-ae4a83989ac3",
+    "distance": None,
+    "directionIcon": "STRAIGHT"
+  },
+  {
+    "description": "Turn right",
+    "startTime": "158",
+    "endTime": "160",
+    "id": "7cc192a2-8e0a-4b16-b3e5-d28a8a11d5d7",
+    "distance": None,
+    "directionIcon": "RIGHT"
+  },
+  {
+    "description": "Keep straight",
+    "startTime": "160",
+    "endTime": "163",
+    "id": "319a3cac-49ec-4904-9d29-473e4e665828",
+    "distance": None,
+    "directionIcon": "STRAIGHT"
+  },
+  {
+    "description": "Now, Make a left",
+    "startTime": "166",
+    "id": "43680db6-d3b1-4485-b254-ad18e0d44514",
+    "endTime": "169",
+    "distance": None,
+    "directionIcon": "LEFT"
+  },
+  {
+    "description": "Go straight",
+    "startTime": "170",
+    "endTime": "194",
+    "id": "723bbc21-d1de-44a0-91ec-7fd9ba00c52a",
+    "distance": None,
+    "directionIcon": "STRAIGHT"
+  },
+  {
+    "description": "Go straight",
+    "startTime": "195",
+    "endTime": "196",
+    "id": "f551d71e-7d15-46b5-84d9-9ccc8a72601a",
+    "distance": None,
+    "directionIcon": "STRAIGHT"
+  },
+  {
+    "description": "Turn left",
+    "startTime": "196",
+    "endTime": "199",
+    "id": "da225859-4cc3-4d98-8731-426a1bff5580",
+    "distance": None,
+    "directionIcon": "LEFT"
+  },
+  {
+    "description": "Go straight",
+    "startTime": "199",
+    "endTime": "227",
+    "id": "cee8ce73-1a33-49a0-8099-0c62c1aebd5c",
+    "distance": None,
+    "directionIcon": "STRAIGHT"
+  },
+  {
+    "description": "Now, follow the directions on the phone.",
+    "startTime": "228",
+    "endTime": "231",
+    "id": "332ae7b6-12ce-4ad4-a7c1-392dd04d691d",
+    "distance": None,
+    "directionIcon": "RIGHT"
+  },
+  {
+    "description": "Destination arrived",
+    "startTime": "233",
+    "endTime": "234",
+    "id": "1c7a22a6-4faf-484e-824f-97010c3321ad",
+    "distance": None,
+    "directionIcon": "END"
+  }
+]
 
-# if __name__ == '__main__':
-#     try:
-#         logging.info('Starting the script')
-#         arrow_attachment_main('Staples.mov', master)
-#     except Exception as e:
-#         logging.info('Error while starting server')
-#         logging.info(e)
-# else:
-#     logging.info('not going in main')
+if __name__ == '__main__':
+    try:
+        logging.info('Starting the script')
+        arrow_attachment_main('sample_mid.mov', master, None)
+    except Exception as e:
+        logging.info('Error while starting server')
+        logging.info(e)
+else:
+    logging.info('not going in main')
