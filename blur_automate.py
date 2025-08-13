@@ -30,8 +30,15 @@ def blurVideo(file_name):
         #     logging.info(e)
         return False
     finally:
-        os.remove(f'inputs/{file_name}')
-        os.remove(f'inputs/{dim_file_name}')
+        try:
+            os.remove(f'inputs/{file_name}')
+        except Exception as e:
+            print(f"Error while removing => inputs/{file_name}")
+    
+        try:
+            os.remove(f'inputs/{dim_file_name}')
+        except Exception as e:
+            print(f"Error while removing => inputs/{dim_file_name}")
 
 
 # if __name__ == "__main__":

@@ -134,7 +134,7 @@ def download_multiple_files(bucket_name, files_to_download, download_dir, max_wo
     return results
 
 
-def upload_video_to_s3(file_path, bucket_name, object_name=None, env='dev'):
+def upload_video_to_s3(file_path, bucket_name, object_name=None, env='dev', route_is_private = False):
     """
     Upload a video file to an S3 bucket.
 
@@ -149,8 +149,9 @@ def upload_video_to_s3(file_path, bucket_name, object_name=None, env='dev'):
 
     try:
         # Upload the file to S3
-        s3.upload_file(file_path, bucket_name, f'{env}/routes/{object_name}')
-        logging.info(f"Upload Successful: {file_path} to {bucket_name}/{env}/routes/{object_name}")
+        upload_file_path = f'{env}/routes/{object_name}' if route_is_private == False else f'{env}/secure_routes/{object_name}'
+        s3.upload_file(file_path, bucket_name, upload_file_path)
+        logging.info(f"Upload Successful: {file_path} to {bucket_name}/{upload_file_path}")
         return True
     except FileNotFoundError:
         logging.info(f"Error: The file {file_path} was not found.")

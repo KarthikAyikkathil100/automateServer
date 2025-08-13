@@ -201,14 +201,20 @@ def arrowAttachJob(data, route_data):
         existingSourceCaption = route_data['sourceCaption']
         if existingSourceCaption == None or len(existingSourceCaption) == 0:
             new_route = True
+        
+        route_is_private = False
+        if isinstance(route_data, dict):
+            route_is_private = route_data.get("isPrivate", False)
         update_route_field(route_id, 'processStatus', 'ARROW_ATTACHMENT_START', env)
         update_automation_time(route_id, env)
         video_url = route_data.get('videoURL')
         file_name = video_url.split('/')[-1]
         logging.info('download of video started')
-        download_file_from_s3(bucket_name, f'{env}/routes/{file_name}', f'blurred/{file_name}')
+        file_path = f'{env}/routes/{file_name}' if route_is_private == False else f'{env}/secure_routes/{file_name}'
+        download_file_from_s3(bucket_name, file_path, f'blurred/{file_name}')
         logging.info('download done')
         final_directions = copy.deepcopy(route_data.get('newSourceCaption'))
+
         print('final_directions => ', final_directions)
         logging.info('Arrow attachment start')
         location_id = route_data.get('locId')
@@ -235,9 +241,10 @@ def arrowAttachJob(data, route_data):
         update_automation_time(route_id, env)
 
         new_file_name = f'processed_{file_name}'
-        new_link = f'https://media.rtme.us/{env}/routes/{new_file_name}'
+        folder_name = 'routes' if route_is_private == False else 'secure_routes'
+        new_link = f'https://media.rtme.us/{env}/{folder_name}/{new_file_name}'
         db_update_success = False
-        db_update_success = upload_video_to_s3(f'final/codec_{file_name}', bucket_name, new_file_name, env)
+        db_update_success = upload_video_to_s3(f'final/codec_{file_name}', bucket_name, new_file_name, env, route_is_private)
         if db_update_success == False:
             raise Exception('DB update error')
 
@@ -404,13 +411,18 @@ def textBlurJob(data, route_data):
         if json_file_path == None:
             raise Exception('Text blur file not found')
         
+        route_is_private = False
+        if isinstance(route_data, dict):
+            route_is_private = route_data.get("isPrivate", False)
+        
         video_url = route_data.get('videoURL')
         if video_url == None:
             raise Exception('Route Video not found')
             print('Route Video not found')
         file_name = video_url.split('/')[-1]
         print('Started downloading the Video File to be processed')
-        db_update_success = download_file_from_s3(bucket_name, f'{env}/routes/{file_name}', f'inputs/{file_name}')
+        file_path = f'{env}/routes/{file_name}' if route_is_private == False else f'{env}/secure_routes/{file_name}'
+        db_update_success = download_file_from_s3(bucket_name, file_path, f'inputs/{file_name}')
         update_automation_time(route_id, env)
         if db_update_success == False:
            raise Exception('Download failed')
@@ -432,12 +444,9 @@ def textBlurJob(data, route_data):
             # Upload the text-blurred video to S3
             change_codec_command = ["ffmpeg", "-i", f'final/{file_name}', '-c:v', 'libx264', '-c:a', 'copy', f'final/codec_{file_name}']
             result_dim = subprocess.run(change_codec_command, check=True, capture_output=True, text=True)    
-            db_update_success = upload_video_to_s3(f'final/codec_{file_name}', bucket_name, file_name, env)
+            db_update_success = upload_video_to_s3(f'final/codec_{file_name}', bucket_name, file_name, env, route_is_private)
             if db_update_success == False:
                raise Exception('DB update failed')
-            # Remove file from local
-            os.remove(f'final/{file_name}')
-            os.remove(f'final/codec_{file_name}')
             db_update_success = update_route_field(route_id, 'processStatus', 'TEXT_BLUR_SUCCESS', env)
             update_automation_time(route_id, env)
             if db_update_success == False:
@@ -449,6 +458,18 @@ def textBlurJob(data, route_data):
         print('Error in text blur')
         print(e)
         return "Error while processing json file", 500
+    finally:
+        try:
+            # Remove file from local
+            os.remove(f'final/{file_name}')
+        except Exception as e:
+            print(f"Error removing -> final/{file_name}")
+        
+        try:
+            # Remove file from local
+            os.remove(f'final/codec_{file_name}')
+        except Exception as e:
+            print(f"Error removing -> final/codec_{file_name}")
 
 
 @app.route('/check-health')
@@ -505,6 +526,11 @@ def faceBlurJob(data, route_data):
             env = data['env']
         update_field_success = False
 
+        route_is_private = False
+
+        if isinstance(route_data, dict): 
+            route_is_private = route_data.get("isPrivate", False)
+
         # Need to run blur script, direction detection script and submit to route DB
         # 1) Download the video from s3 and save in local
         logging.info('Blurring start')
@@ -514,7 +540,8 @@ def faceBlurJob(data, route_data):
             raise Exception('Update DB failed')
         video_url = route_data['videoURL']
         file_name = video_url.split('/')[-1]
-        download_success = download_file_from_s3(bucket_name, f'{env}/routes/{file_name}', f'inputs/{file_name}')
+        file_path = f'{env}/routes/{file_name}' if route_is_private == False else f'{env}/secure_routes/{file_name}'
+        download_success = download_file_from_s3(bucket_name, file_path, f'inputs/{file_name}')
         if download_success == False:
             raise Exception('download failed')
 
@@ -526,7 +553,7 @@ def faceBlurJob(data, route_data):
         logging.info('blur complete')
 
         # 3) Upload blurred video to S3
-        update_field_success = upload_video_to_s3(f'blurred/{file_name}', bucket_name, None, env)
+        update_field_success = upload_video_to_s3(f'blurred/{file_name}', bucket_name, None, env, route_is_private)
         if update_field_success == False:
             raise Exception('Update DB failed')
 
@@ -580,7 +607,12 @@ def directionDetectionJob(data, route_data):
         route_id = route_data['id']
         video_url = route_data['videoURL']
         file_name = video_url.split('/')[-1]
-        download_success = download_file_from_s3(bucket_name, f'{env}/routes/{file_name}', f'blurred/{file_name}')
+        route_is_private = False
+        if isinstance(route_data, dict):
+            route_is_private = route_data.get("isPrivate", False)
+            
+        file_path = f'{env}/routes/{file_name}' if route_is_private == False else f'{env}/secure_routes/{file_name}'
+        download_success = download_file_from_s3(bucket_name, file_path, f'blurred/{file_name}')
         if download_success == False:
             raise Exception('download failed')
         logging.info('Starting the direction detection')
