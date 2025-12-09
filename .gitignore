@@ -5,6 +5,7 @@ multithread-res/*
 multithreaded_ou/*
 .env
 venv
+penv
 __pycache__
 *.mp4
 *.js

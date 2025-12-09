@@ -9,6 +9,7 @@ from direction_detection import directionDetection
 from botocore.exceptions import ClientError
 from helpers import download_file_from_s3, get_route_data, upload_video_to_s3, store_detected_directions, update_route_field, check_multiple_objects, update_automation_time, download_multiple_files, get_location_data
 from arrow_attachment import arrow_attachment_main
+from arrow_animations import animate_arrow_gifs
 import threading
 from text_blur import text_blur_main
 from tint_color import tint_image
@@ -22,98 +23,6 @@ bucket_name = 'media.rtme.us'
 app = Flask(__name__)
 logging.info('Inside the server')
 
-# @app.route('/test/v1')
-# def testServerV1():
-#     data = {
-#         "message": "Hello from server"
-#     }
-#     return jsonify(data), 200
-
-# # @app.route('/test')
-# def testServer():
-#     try:
-#         start_time = datetime.now()
-#         # 1) Download the video from s3 and save in local
-#         file_name = 'dubai_small_dim.mp4'
-#         # download_file_from_s3(bucket_name, f'{file_name}', f'inputs/{file_name}')
-
-#         # 2) Blur the video
-#         blurVideo(file_name)
-#         # logging.info('blur complete')
-
-#         # 3) Now remove the input folder
-#         # os.remove('inputs/potrait_sample_down.mp4')
-
-#         # 4) Direction detection
-#         logging.info('Direction automation start')
-#         directionDetection(file_name)
-#         end_time = datetime.now()
-#         logging.info('API start => ', start_time)
-#         logging.info('API end => ', end_time)
-#         data = {
-#             "message": "Hello from server"
-#         }
-#         return jsonify(data), 200
-#     except Exception as e:
-#         logging.info(e)
-#         data = {
-#             "message": "Error from server"
-#         }
-#         return jsonify(data), 500
-
-
-# @app.route('/test/automation-start', methods=['POST'])
-# def testPost():
-#     file_name = None
-#     try:
-#         data = request.get_json()
-#         route_id = data['route_id']
-#         route_data = get_route_data(route_id)
-#         if route_data == None:
-#             data = {
-#                 "message": "Route not found"
-#             }
-#             return jsonify(data), 404 
-        
-#         video_url = route_data.get('videoURL')
-#         if video_url == None:
-#             data = {
-#                 "message": "Route Video not found"
-#             }
-#             return jsonify(data), 404 
-#         file_name = video_url.split('/')[-1]
-#         download_file_from_s3(bucket_name, f'{file_name}', f'inputs/{file_name}')
-        
-#         # 2) Blur the video
-#         update_route_field(route_id, 'processStatus', 'BLUR_START')
-#         blurVideo(file_name)
-#         logging.info('blur complete')
-#         upload_video_to_s3(f'blurred/{file_name}', bucket_name) # This will become the base version
-#         update_route_field(route_id, 'processStatus', 'BLUR_COMPLETE')
-#         # 3) Direction detection
-#         update_route_field(route_id, 'processStatus', 'DIRECTION_DETECTION_START')
-#         final_directions = directionDetection(file_name)
-#         if final_directions == None:
-#             update_route_field(route_id, 'processStatus', 'DIRECTION_DETECTION_ERROR')
-#         else:
-#             store_detected_directions(final_directions, route_id)
-#             logging.info('Direction detection complete')
-#             update_route_field(route_id, 'processStatus', 'DIRECTION_DETECTION_SUCCESS')
-#             data = {
-#                 "message": "Done processing..."
-#             }
-#             return jsonify(data), 200
-#     except Exception as e:
-#         logging.info('Error while processintg video')
-#         data = {
-#             "message": 'Error while processintg video'
-#         }
-#         return jsonify(data), 500
-#     finally:
-#         try:
-#             os.remove(f'blurred/{file_name}')
-#         except Exception as e:
-#             print('Error removing file')
 
 def manageColoredArrows(location_color_hex, env='dev'):
     try:
@@ -224,7 +133,10 @@ def arrowAttachJob(data, route_data):
             hex_color = location_color_hex.lstrip('#')
             manageColoredArrows(location_color_hex, env)
 
-        arrow_attachment_main(file_name, final_directions, hex_color)
+        if env == 'dev' or env == 'staging':
+            animate_arrow_gifs(route_id, file_name, final_directions)
+        else:
+            arrow_attachment_main(file_name, final_directions, hex_color)
 
         # Change the video codec for making the video small in size
         # ffmpeg -i input.mp4 -c:v libx264 -c:a copy output_h264.mp4

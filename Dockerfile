@@ -1,4 +1,4 @@
-FROM python:3
+FROM python:3.8
 
 
 WORKDIR /app
@@ -7,14 +7,57 @@ RUN mkdir -p inputs blurred multithreaded_ou multithread-res final images text_j
 
 
 # Create a virtual environment
-RUN python -m venv venv
+# RUN python -m venv venv
+
+# RUN source venv/bin/activate
+
+# Install system libs required for Pillow/MoviePy/OpenCV
+RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    libsm6 \
+    libxext6 \
+    libxrender1 \
+    libgl1 \
+    libjpeg-dev \
+    libpng-dev \
+    libtiff-dev \
+    libwebp-dev \
+    zlib1g-dev \
+    libfreetype6-dev \
+    liblcms2-dev \
+    libopenjp2-7-dev \
+    libharfbuzz-dev \
+    libfribidi-dev \
+    giflib-tools \
+    libimagequant-dev \
+    libraqm-dev && \
+    rm -rf /var/lib/apt/lists/*
 
 # Install the required dependencies inside the virtual environment
-RUN pip install --no-cache-dir common Flask boto3 numpy opencv-python-headless awscli deface psutil
+# RUN pip install --no-cache-dir common Flask boto3 numpy opencv-python-headless awscli deface psutil moviepy==1.0.3 pillow imageio tqdm decorator
 
-RUN apt-get update && \
-    apt-get install -y ffmpeg && \
-    rm -rf /var/lib/apt/lists/*
+RUN pip install --no-cache-dir \
+    pillow==9.5.0 \
+    common \
+    numpy==1.24.4 \
+    moviepy==1.0.3 \
+    opencv-python-headless==4.8.1.78 \
+    imageio==2.35.1 \
+    imageio-ffmpeg==0.5.1 \
+    decorator \
+    tqdm \
+    Flask \
+    boto3 \
+    awscli \
+    deface \
+    psutil
+
+# Force MoviePy to use system ffmpeg
+ENV IMAGEIO_FFMPEG_EXE=/usr/bin/ffmpeg
+
+# RUN apt-get update && \
+#     apt-get install -y ffmpeg && \
+#     rm -rf /var/lib/apt/lists/*
 
 COPY video.py .
 COPY tst_scene_render.py .
@@ -30,7 +73,10 @@ COPY text_blur.py .
 COPY tint_color.py .
 COPY images/ ./images/
 COPY old_arrows/ ./old_arrows/
-
+COPY newGifs/ ./newGifs/
+COPY arrow_animations.py ./arrow_animations.py
+COPY animation_gif_helpers.py ./animation_gif_helpers.py
+COPY claude_test.py ./claude_test.py
 # Verify the installation
 RUN aws --version
 
