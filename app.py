@@ -4,6 +4,7 @@ import subprocess
 import threading
 from datetime import datetime
 from flask import Flask, request, jsonify
+from animation_gif_helpers import generate_colored_animations, manage_colored_gifs, upload_colored_gifs
 from blur_automate import blurVideo
 from direction_detection import directionDetection
 from botocore.exceptions import ClientError
@@ -24,21 +25,28 @@ app = Flask(__name__)
 logging.info('Inside the server')
 
 
+old_arrow_path = 'old_arrows/'
+files = os.listdir(old_arrow_path)
 def manageColoredArrows(location_color_hex, env='dev'):
     try:
         if location_color_hex == None: return None
         
         hex_color = location_color_hex.lstrip('#')
-        file_path = os.path.join('images', f'{hex_color}-left-arrow.png')
-        if os.path.isfile(file_path):
+
+        file_paths = [os.path.join('images', f'{hex_color}-{file_name}') for file_name in files]
+        all_files_available_locally = True
+
+        for file_path in file_paths:
+            if os.path.isfile(file_path) == False:
+                all_files_available_locally = False
+                break
+
+
+        if all_files_available_locally == True:
             print('Image found locally')
         else:
             keys = [
-                f'{env}/location_arrows/{hex_color}-left-arrow.png',
-                f'{env}/location_arrows/{hex_color}-right-arrow.png',
-                f'{env}/location_arrows/{hex_color}-straight-arrow.png',
-                f'{env}/location_arrows/{hex_color}-slight-left-arrow.png',
-                f'{env}/location_arrows/{hex_color}-slight-right-arrow.png',
+                f'{env}/location_arrows/{hex_color}-{file_name}' for file_name in files
             ]
             res = check_multiple_objects(bucket_name, keys)
             all_objects_available = True
@@ -129,12 +137,15 @@ def arrowAttachJob(data, route_data):
                 location_color_hex = color
 
         hex_color = None
-        if location_color_hex != None:
+        if location_color_hex != None:    
             hex_color = location_color_hex.lstrip('#')
-            manageColoredArrows(location_color_hex, env)
+            if env == 'dev' or env == 'staging':
+                manage_colored_gifs(hex_color, env)
+            else:
+                manageColoredArrows(location_color_hex, env)
 
         if env == 'dev' or env == 'staging':
-            animate_arrow_gifs(route_id, file_name, final_directions)
+            animate_arrow_gifs(route_id, file_name, final_directions, hex_color)
         else:
             arrow_attachment_main(file_name, final_directions, hex_color)
 
@@ -175,6 +186,10 @@ def arrowAttachJob(data, route_data):
         except:
             logging.info('Error while updating DB')
     finally:
+        try:
+            os.remove(f'blurred/{file_name}')
+        except Exception as e:
+            print('Error removing file')
         try:
             os.remove(f'final/{file_name}')
         except Exception as e:

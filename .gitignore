@@ -10,3 +10,4 @@ __pycache__
 *.mp4
 *.js
 images/*
+colored_gifs/

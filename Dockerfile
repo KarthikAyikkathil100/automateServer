@@ -3,7 +3,7 @@ FROM python:3.8
 
 WORKDIR /app
 
-RUN mkdir -p inputs blurred multithreaded_ou multithread-res final images text_json
+RUN mkdir -p inputs blurred multithreaded_ou multithread-res final images text_json colored_gifs
 
 
 # Create a virtual environment
@@ -76,7 +76,6 @@ COPY old_arrows/ ./old_arrows/
 COPY newGifs/ ./newGifs/
 COPY arrow_animations.py ./arrow_animations.py
 COPY animation_gif_helpers.py ./animation_gif_helpers.py
-COPY claude_test.py ./claude_test.py
 # Verify the installation
 RUN aws --version
 

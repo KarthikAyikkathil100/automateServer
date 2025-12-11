@@ -18,7 +18,7 @@ short_anim_max_scale = 0.5
 pure_turns_directions = [x for x in all_turns if x != 'END']
 
 
-def get_gif_name(direction: str):
+def get_gif_name(direction: str, hexColor = None):
     direction_map = {
         'STRAIGHT': 'straight-25slow.gif',
         'LEFT': 'left-25speed.gif',
@@ -27,6 +27,8 @@ def get_gif_name(direction: str):
         'SLIGHT_RIGHT': 'right-25speed.gif',
     }
     res = direction_map[direction] if direction_map[direction] != None else direction_map['STRAIGHT']
+    if hexColor != None:
+        res = f"{hexColor}-{res}"
     return res
 
 
@@ -232,7 +234,7 @@ def scale_mask_wrapper(duration, direction, width_factor=gif_width_scale_factor)
         w, h = img.size
         new_h = int(current_height)
         new_w = int(new_h * (w / h) * effective_width_factor)
-        resized = img.resize((new_w, new_h), Image.LANCZOS)
+        resized = img.resize((new_w, new_h), Image.BILINEAR)
 
         return np.array(resized)
 
@@ -309,9 +311,9 @@ def get_anmimation_duration_chunks_v2(start_duration, end_duration, is_last, gif
 
 
 
-def animate_arrow_gifs(route_id, vid_name, source_caption):
+def animate_arrow_gifs(route_id, vid_name, source_caption, hex_color = None):
     try:
-        gif_dir = "newGifs"
+        gif_dir = "newGifs" if hex_color == None else "colored_gifs"
 
         output_name = f"{vid_name}"
 
@@ -348,7 +350,7 @@ def animate_arrow_gifs(route_id, vid_name, source_caption):
                 if chunk_end-chunk_start == 0:
                     continue
                 
-                gif_name = get_gif_name(direction)
+                gif_name = get_gif_name(direction, hex_color)
                 gif_path = f"{gif_dir}/{gif_name}"
                 gif_instance = VideoFileClip(gif_path, has_mask=True)
                 # gif_instance = gif_instance.fl(ensure_rgb_frame_with_time)

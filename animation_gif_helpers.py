@@ -1,5 +1,14 @@
-
+import os
 from copy import copy
+from PIL import Image
+import numpy as np
+from helpers import upload_multiple_files, check_multiple_objects, download_multiple_files
+
+
+gif_path = 'newGifs/'
+new_gif_directory_path = 'colored_gifs/'
+bucket_name = 'media.rtme.us'
+files = os.listdir(gif_path)
 
 
 all_turns = ['RIGHT', 'SLIGHT_RIGHT', 'LEFT', 'SLIGHT_LEFT', 'END']
@@ -194,3 +203,141 @@ def preProcess(data):
     except Exception as e:
         print(e)
         return None
+
+
+def tint_gif_with_shading(input_path, output_path, hex_color, min_brightness=0.3):
+    """
+    min_brightness controls darkness floor:
+    - 0.0 = full shading (like Script 1)
+    - 0.3 = slightly boosted shadows
+    - 0.5 = Script 2 default
+    """
+    try:
+        r = int(hex_color[0:2], 16)
+        g = int(hex_color[2:4], 16)
+        b = int(hex_color[4:6], 16)
+        tint = np.array([r, g, b], dtype=float)
+
+        img = Image.open(input_path)
+        frames = []
+
+        for f in range(img.n_frames):
+            img.seek(f)
+            frame = img.convert("RGBA")
+            arr = np.array(frame).astype(float)
+
+            rgb = arr[..., :3]
+            alpha = arr[..., 3]
+
+            # luminance 0–1
+            lum = (0.299*rgb[...,0] + 0.587*rgb[...,1] + 0.114*rgb[...,2]) / 255.0
+
+            # Adjustable brightness floor
+            brightness_factor = min_brightness + (lum * (1 - min_brightness))
+
+            rgb_tinted = (tint * brightness_factor[..., None]).clip(0, 255)
+
+            new_arr = np.dstack([rgb_tinted, alpha]).astype(np.uint8)
+            frames.append(Image.fromarray(new_arr, "RGBA"))
+
+        frames[0].save(
+            output_path,
+            save_all=True,
+            append_images=frames[1:],
+            loop=0,
+            disposal=2
+        )
+        return True
+    except Exception as e:
+        print(e)
+        return None
+
+
+def generate_colored_animations(hexColor):
+    try:
+        for file_name in files:
+            new_file_name = f'{hexColor}-{file_name}'
+            result = tint_gif_with_shading(f'{gif_path}{file_name}', f'{new_gif_directory_path}{new_file_name}', hexColor)
+            if result != True:
+                raise Exception('Gif tinting error')
+        return True
+    except Exception as e:
+        print(e)
+        return None
+
+def upload_colored_gifs(hexColor, env):
+    try:    
+        upload_keys = []
+        for gif_name in files:
+            local_path = f'colored_gifs/{hexColor}-{gif_name}'
+            s3_path = f'{env}/location_gifs/{hexColor}-{gif_name}'
+            upload_keys.append((local_path, s3_path))
+        upload_multiple_files(upload_keys, bucket_name)
+        return True
+    except Exception as e:
+        print(e)
+        return None
+        
+
+def generate_color_gifs_and_upload(hexColor, env):
+    try:
+        color_result = generate_colored_animations(hexColor)
+        if color_result != True:
+            raise Exception('Color generation error')
+        print(f'Color generation successful for {hexColor}')
+
+        # now save this file to S3
+        uploaded_color_gif_res = upload_colored_gifs(hexColor, env)
+        if uploaded_color_gif_res != True:
+            print('Color gif upload error')
+        
+        return True
+    except Exception as e:
+        print(e)
+        return None
+
+def manage_colored_gifs(location_color_hex, env='dev'):
+    try:
+        if location_color_hex == None: return None
+        
+        hex_color = location_color_hex.lstrip('#')
+
+        file_paths = [os.path.join('colored_gifs', f'{hex_color}-{file_name}') for file_name in files]
+        all_files_available_locally = True
+
+        for file_path in file_paths:
+            if os.path.isfile(file_path) == False:
+                all_files_available_locally = False
+                break
+
+        if all_files_available_locally == True:
+            print('Gifs found locally')
+        else:
+            keys = [
+                f'{env}/location_gifs/{hex_color}-{file_name}' for file_name in files
+            ]
+            res = check_multiple_objects(bucket_name, keys)
+            all_objects_available_in_s3 = True
+            for value in res.values():
+                if value == False:
+                    all_objects_available_in_s3 = False
+                    break
+            if all_objects_available_in_s3 == True:
+                download_res = download_multiple_files(bucket_name, keys, 'colored_gifs')
+                all_objects_saved = True
+                for value in download_res.values():
+                    if value == False:
+                        all_objects_saved = False
+                        break
+                print('Image found in S3')
+                if all_objects_saved == False:
+                    arrow_color_success = generate_color_gifs_and_upload(location_color_hex, env)
+                    if arrow_color_success != True:
+                        raise Exception('Arrow color error')    
+            else:
+                print('Arrow file needs to be generated')
+                arrow_color_success = generate_color_gifs_and_upload(location_color_hex, env)
+                if arrow_color_success != True:
+                    raise Exception('Arrow color error')
+    except Exception as e:
+        raise Exception('Arrow color error')
