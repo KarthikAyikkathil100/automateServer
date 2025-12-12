@@ -253,10 +253,10 @@ def tint_gif_with_shading(input_path, output_path, hex_color, min_brightness=0.3
         return None
 
 
-def generate_colored_animations(hexColor):
+def generate_colored_animations(hexColor, routeId):
     try:
         for file_name in files:
-            new_file_name = f'{hexColor}-{file_name}'
+            new_file_name = f'{routeId}-{hexColor}-{file_name}'
             result = tint_gif_with_shading(f'{gif_path}{file_name}', f'{new_gif_directory_path}{new_file_name}', hexColor)
             if result != True:
                 raise Exception('Gif tinting error')
@@ -265,11 +265,11 @@ def generate_colored_animations(hexColor):
         print(e)
         return None
 
-def upload_colored_gifs(hexColor, env):
+def upload_colored_gifs(hexColor, routeId, env):
     try:    
         upload_keys = []
         for gif_name in files:
-            local_path = f'colored_gifs/{hexColor}-{gif_name}'
+            local_path = f'colored_gifs/{routeId}-{hexColor}-{gif_name}'
             s3_path = f'{env}/location_gifs/{hexColor}-{gif_name}'
             upload_keys.append((local_path, s3_path))
         upload_multiple_files(upload_keys, bucket_name)
@@ -279,15 +279,15 @@ def upload_colored_gifs(hexColor, env):
         return None
         
 
-def generate_color_gifs_and_upload(hexColor, env):
+def generate_color_gifs_and_upload(hexColor, routeId, env = 'dev'):
     try:
-        color_result = generate_colored_animations(hexColor)
+        color_result = generate_colored_animations(hexColor, routeId)
         if color_result != True:
             raise Exception('Color generation error')
         print(f'Color generation successful for {hexColor}')
 
         # now save this file to S3
-        uploaded_color_gif_res = upload_colored_gifs(hexColor, env)
+        uploaded_color_gif_res = upload_colored_gifs(hexColor, routeId, env)
         if uploaded_color_gif_res != True:
             print('Color gif upload error')
         
@@ -296,48 +296,40 @@ def generate_color_gifs_and_upload(hexColor, env):
         print(e)
         return None
 
-def manage_colored_gifs(location_color_hex, env='dev'):
+
+def manage_colored_gifs(location_color_hex, routeId, env='dev'):
     try:
         if location_color_hex == None: return None
         
         hex_color = location_color_hex.lstrip('#')
 
-        file_paths = [os.path.join('colored_gifs', f'{hex_color}-{file_name}') for file_name in files]
-        all_files_available_locally = True
-
-        for file_path in file_paths:
-            if os.path.isfile(file_path) == False:
-                all_files_available_locally = False
+        keys = [
+            f'{env}/location_gifs/{hex_color}-{file_name}' for file_name in files
+        ]
+        res = check_multiple_objects(bucket_name, keys)
+        all_objects_available_in_s3 = True
+        for value in res.values():
+            if value == False:
+                all_objects_available_in_s3 = False
                 break
-
-        if all_files_available_locally == True:
-            print('Gifs found locally')
-        else:
-            keys = [
-                f'{env}/location_gifs/{hex_color}-{file_name}' for file_name in files
-            ]
-            res = check_multiple_objects(bucket_name, keys)
-            all_objects_available_in_s3 = True
-            for value in res.values():
+        
+        if all_objects_available_in_s3 == True:
+            download_res = download_multiple_files(bucket_name, keys, 'colored_gifs', routeId)
+            all_objects_saved = True
+            for value in download_res.values():
                 if value == False:
-                    all_objects_available_in_s3 = False
+                    all_objects_saved = False
                     break
-            if all_objects_available_in_s3 == True:
-                download_res = download_multiple_files(bucket_name, keys, 'colored_gifs')
-                all_objects_saved = True
-                for value in download_res.values():
-                    if value == False:
-                        all_objects_saved = False
-                        break
-                print('Image found in S3')
-                if all_objects_saved == False:
-                    arrow_color_success = generate_color_gifs_and_upload(location_color_hex, env)
-                    if arrow_color_success != True:
-                        raise Exception('Arrow color error')    
-            else:
-                print('Arrow file needs to be generated')
-                arrow_color_success = generate_color_gifs_and_upload(location_color_hex, env)
+            print('Image found in S3')
+            if all_objects_saved == False:
+                arrow_color_success = generate_color_gifs_and_upload(location_color_hex, routeId, env)
                 if arrow_color_success != True:
-                    raise Exception('Arrow color error')
+                    raise Exception('Arrow color error')    
+        else:
+            print('Arrow file needs to be generated')
+            arrow_color_success = generate_color_gifs_and_upload(location_color_hex, routeId, env)
+            if arrow_color_success != True:
+                raise Exception('Arrow color error')
     except Exception as e:
+        print(e)
         raise Exception('Arrow color error')

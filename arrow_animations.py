@@ -18,7 +18,7 @@ short_anim_max_scale = 0.5
 pure_turns_directions = [x for x in all_turns if x != 'END']
 
 
-def get_gif_name(direction: str, hexColor = None):
+def get_gif_name(direction: str, route_id, hexColor = None):
     direction_map = {
         'STRAIGHT': 'straight-25slow.gif',
         'LEFT': 'left-25speed.gif',
@@ -28,7 +28,7 @@ def get_gif_name(direction: str, hexColor = None):
     }
     res = direction_map[direction] if direction_map[direction] != None else direction_map['STRAIGHT']
     if hexColor != None:
-        res = f"{hexColor}-{res}"
+        res = f"{route_id}-{hexColor}-{res}"
     return res
 
 
@@ -350,7 +350,7 @@ def animate_arrow_gifs(route_id, vid_name, source_caption, hex_color = None):
                 if chunk_end-chunk_start == 0:
                     continue
                 
-                gif_name = get_gif_name(direction, hex_color)
+                gif_name = get_gif_name(direction, route_id, hex_color)
                 gif_path = f"{gif_dir}/{gif_name}"
                 gif_instance = VideoFileClip(gif_path, has_mask=True)
                 # gif_instance = gif_instance.fl(ensure_rgb_frame_with_time)

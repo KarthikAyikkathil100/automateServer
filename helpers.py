@@ -110,7 +110,7 @@ def check_multiple_objects(bucket, keys, max_workers=10):
             results[key] = exists
     return results
 
-def download_multiple_files(bucket_name, files_to_download, download_dir, max_workers=10):
+def download_multiple_files(bucket_name, files_to_download, download_dir, route_id = None, max_workers=10):
     """
     :param bucket_name: S3 bucket name
     :param files_to_download: List of object keys (file names in S3)
@@ -121,7 +121,8 @@ def download_multiple_files(bucket_name, files_to_download, download_dir, max_wo
     results = {}
 
     def download_wrapper(object_key):
-        local_path = f"{download_dir}/{object_key.split('/')[-1]}"  # Customize as needed
+        file_name = object_key.split('/')[-1] if route_id == None else f"{route_id}-{object_key.split('/')[-1]}"
+        local_path = f"{download_dir}/{file_name}"  # Customize as needed
         success = download_file_from_s3(bucket_name, object_key, local_path)
         return object_key, success
 

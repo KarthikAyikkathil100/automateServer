@@ -26,6 +26,8 @@ logging.info('Inside the server')
 
 
 old_arrow_path = 'old_arrows/'
+gif_path = 'newGifs/'
+colored_gif_path = 'colored_gifs/'
 files = os.listdir(old_arrow_path)
 def manageColoredArrows(location_color_hex, env='dev'):
     try:
@@ -110,6 +112,7 @@ def arrowAttachJob(data, route_data):
     route_id = None
     file_name = None
     env = 'dev'
+    hex_color = None
     try:
         route_id = route_data['id']
         if data['env'] != None:
@@ -136,11 +139,10 @@ def arrowAttachJob(data, route_data):
             if color != None:
                 location_color_hex = color
 
-        hex_color = None
         if location_color_hex != None:    
             hex_color = location_color_hex.lstrip('#')
             if env == 'dev' or env == 'staging':
-                manage_colored_gifs(hex_color, env)
+                manage_colored_gifs(hex_color, route_id, env)
             else:
                 manageColoredArrows(location_color_hex, env)
 
@@ -198,6 +200,16 @@ def arrowAttachJob(data, route_data):
             os.remove(f'final/codec_{file_name}')
         except Exception as e:
             print('Error removing file')
+
+        if (env == 'dev' or env == 'staging') and hex_color != None:
+            # remove the colored gifs
+            colored_gif_files = os.listdir(gif_path)
+            for file in colored_gif_files:
+                try:
+                    file_name = f'{route_id}-{hex_color}-{file}'
+                    os.remove(f'{colored_gif_path}{file_name}')
+                except Exception as e:
+                    print(e)
 
 
 
