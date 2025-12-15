@@ -8,7 +8,7 @@ from animation_gif_helpers import generate_colored_animations, manage_colored_gi
 from blur_automate import blurVideo
 from direction_detection import directionDetection
 from botocore.exceptions import ClientError
-from helpers import download_file_from_s3, get_route_data, upload_video_to_s3, store_detected_directions, update_route_field, check_multiple_objects, update_automation_time, download_multiple_files, get_location_data
+from helpers import download_file_from_s3, get_route_data, update_route_fields, upload_video_to_s3, store_detected_directions, update_route_field, check_multiple_objects, update_automation_time, download_multiple_files, get_location_data
 from arrow_attachment import arrow_attachment_main
 from arrow_animations import animate_arrow_gifs
 import threading
@@ -119,6 +119,14 @@ def arrowAttachJob(data, route_data):
             env = data['env']
         new_route = False
         existingSourceCaption = route_data['sourceCaption']
+        showAnimationsChanged = route_data.get('showAnimationsChanged', False)
+        reRunArrowAttach = route_data.get('reRunArrowAttach', True)
+
+        if showAnimationsChanged == None:
+            showAnimationsChanged = False
+        if reRunArrowAttach == None:
+            reRunArrowAttach = True
+
         if existingSourceCaption == None or len(existingSourceCaption) == 0:
             new_route = True
         update_route_field(route_id, 'processStatus', 'ARROW_ATTACHMENT_START', env)
@@ -128,8 +136,8 @@ def arrowAttachJob(data, route_data):
         logging.info('download of video started')
         download_file_from_s3(bucket_name, f'{env}/routes/{file_name}', f'blurred/{file_name}')
         logging.info('download done')
-        final_directions = copy.deepcopy(route_data.get('newSourceCaption'))
-        print('final_directions => ', final_directions)
+        final_directions = copy.deepcopy(route_data.get('newSourceCaption') if reRunArrowAttach == True else route_data.get('sourceCaption'))
+        
         logging.info('Arrow attachment start')
         location_id = route_data.get('locId')
         location_data = get_location_data(location_id, env, ['id', 'locationColor'])
@@ -166,19 +174,23 @@ def arrowAttachJob(data, route_data):
         if db_update_success == False:
             raise Exception('DB update error')
 
-        db_update_success = update_route_field(route_id, 'processedVideoLink', new_link, env)
-        if db_update_success == False:
-            raise Exception('DB update error')
-
-        db_update_success = update_route_field(route_id, 'sourceCaption', route_data.get('newSourceCaption'), env)
-        if db_update_success == False:
-            raise Exception('DB update error')
-        db_update_success = update_route_field(route_id, 'languageCaptions', route_data.get('newLanguageCaptions'), env)
-        if db_update_success == False:
-            raise Exception('DB update error')
-        db_update_success = update_route_field(route_id, 'processStatus', 'ARROW_ATTACHMENT_SUCCESS', env)
-        if db_update_success == False:
-            raise Exception('DB update error')
+        if reRunArrowAttach == True:
+            db_update_success = update_route_fields(route_id, {
+                'processedVideoLink': new_link,
+                'sourceCaption': route_data.get('newSourceCaption'),
+                'languageCaptions': route_data.get('newLanguageCaptions'),
+                'processStatus': 'ARROW_ATTACHMENT_SUCCESS'
+            }, env)
+            if db_update_success == False:
+                raise Exception('DB update error')
+        elif reRunArrowAttach == False and showAnimationsChanged == True:
+            db_update_success = update_route_fields(route_id, {
+                'showAnimationsChanged': None,
+                'reRunArrowAttach': None,
+                'processStatus': 'ARROW_ATTACHMENT_SUCCESS'
+            }, env)
+            if db_update_success == False:
+                raise Exception('DB update error')
     except Exception as e:
         logging.info('Error while processing arrow attachment')
         print(e)

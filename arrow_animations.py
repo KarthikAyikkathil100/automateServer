@@ -333,6 +333,10 @@ def animate_arrow_gifs(route_id, vid_name, source_caption, hex_color = None):
         for i, x in enumerate(captions):
             start_time = x.get("startTime", 0)
             end_time = x.get("endTime", 0)
+            show_animation = x.get('showAnimations', True)
+            if show_animation == False:
+                continue
+            
             direction = x.get('directionIcon', 'STRAIGHT')
 
             if end_time-start_time == 0:

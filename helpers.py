@@ -70,6 +70,47 @@ def update_route_field(key, field, value, env = 'dev'):
         return False
 
 
+def update_route_fields(key, data: dict, env='dev'):
+    """
+    Update multiple fields in a DynamoDB item.
+    
+    :param key: Partition key of the item
+    :param data: dict of { field_name: field_value }
+    :param env: environment prefix
+    :return: True/False
+    """
+    try:
+        target_table = f'{env}-{table_name}'
+        table = dynamodb.Table(target_table)
+
+        # Build ExpressionAttributeNames and Values
+        expression_attribute_names = {}
+        expression_attribute_values = {}
+        update_expr_parts = []
+
+        for idx, (field, value) in enumerate(data.items()):
+            placeholder_name = f"#f{idx}"
+            placeholder_value = f":v{idx}"
+
+            expression_attribute_names[placeholder_name] = field
+            expression_attribute_values[placeholder_value] = value
+            update_expr_parts.append(f"{placeholder_name} = {placeholder_value}")
+
+        update_expression = "SET " + ", ".join(update_expr_parts)
+
+        table.update_item(
+            Key={'id': key},
+            UpdateExpression=update_expression,
+            ExpressionAttributeNames=expression_attribute_names,
+            ExpressionAttributeValues=expression_attribute_values
+        )
+
+        return True
+    except Exception as e:
+        logging.info(f"Error while updating fields in DynamoDB: {e}")
+        return False
+
+
 
 
 def download_file_from_s3(bucket_name, object_key, download_path):
