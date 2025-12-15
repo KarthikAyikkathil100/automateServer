@@ -4,6 +4,7 @@ logging.basicConfig(level=logging.INFO)
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import psutil
 import time
+import subprocess
 # Initialize DynamoDB resource using boto3
 dynamodb = boto3.resource('dynamodb')
 table_name = 'Routes'
@@ -295,3 +296,19 @@ def get_location_data(item_id, env='dev', fields=['id']):
     except Exception as e:
         logging.info(f'Error while fetching route data: {e}')
         return None
+
+
+def get_video_duration(path):
+    result = subprocess.run(
+        [
+            "ffprobe", "-v", "error",
+            "-show_entries", "format=duration",
+            "-of", "default=noprint_wrappers=1:nokey=1",
+            path
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True
+    )
+    return float(result.stdout.strip())
+

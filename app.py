@@ -8,7 +8,7 @@ from animation_gif_helpers import generate_colored_animations, manage_colored_gi
 from blur_automate import blurVideo
 from direction_detection import directionDetection
 from botocore.exceptions import ClientError
-from helpers import download_file_from_s3, get_route_data, update_route_fields, upload_video_to_s3, store_detected_directions, update_route_field, check_multiple_objects, update_automation_time, download_multiple_files, get_location_data
+from helpers import download_file_from_s3, get_route_data, get_video_duration, update_route_fields, upload_video_to_s3, store_detected_directions, update_route_field, check_multiple_objects, update_automation_time, download_multiple_files, get_location_data
 from arrow_attachment import arrow_attachment_main
 from arrow_animations import animate_arrow_gifs
 import threading
@@ -121,6 +121,7 @@ def arrowAttachJob(data, route_data):
         existingSourceCaption = route_data['sourceCaption']
         showAnimationsChanged = route_data.get('showAnimationsChanged', False)
         reRunArrowAttach = route_data.get('reRunArrowAttach', True)
+        total_duration = route_data.get('totalDuration', None)
 
         if showAnimationsChanged == None:
             showAnimationsChanged = False
@@ -136,6 +137,15 @@ def arrowAttachJob(data, route_data):
         logging.info('download of video started')
         download_file_from_s3(bucket_name, f'{env}/routes/{file_name}', f'blurred/{file_name}')
         logging.info('download done')
+
+        video_duration = 0
+        if total_duration == None:
+            try:
+                video_duration = get_video_duration(f'blurred/{file_name}')
+            except Exception as e:
+                print(e)
+        
+        print("video_duration -- ", video_duration)
         final_directions = copy.deepcopy(route_data.get('newSourceCaption') if reRunArrowAttach == True else route_data.get('sourceCaption'))
         
         logging.info('Arrow attachment start')
@@ -175,20 +185,26 @@ def arrowAttachJob(data, route_data):
             raise Exception('DB update error')
 
         if reRunArrowAttach == True:
-            db_update_success = update_route_fields(route_id, {
+            update_data = {
                 'processedVideoLink': new_link,
                 'sourceCaption': route_data.get('newSourceCaption'),
                 'languageCaptions': route_data.get('newLanguageCaptions'),
                 'processStatus': 'ARROW_ATTACHMENT_SUCCESS'
-            }, env)
+            }
+            if total_duration == None:
+                update_data['totalDuration'] = int(video_duration)
+            db_update_success = update_route_fields(route_id, update_data, env)
             if db_update_success == False:
                 raise Exception('DB update error')
         elif reRunArrowAttach == False and showAnimationsChanged == True:
-            db_update_success = update_route_fields(route_id, {
+            update_data = {
                 'showAnimationsChanged': None,
                 'reRunArrowAttach': None,
                 'processStatus': 'ARROW_ATTACHMENT_SUCCESS'
-            }, env)
+            }
+            if total_duration == None:
+                update_data['totalDuration'] = int(video_duration)
+            db_update_success = update_route_fields(route_id, update_data, env)
             if db_update_success == False:
                 raise Exception('DB update error')
     except Exception as e:
