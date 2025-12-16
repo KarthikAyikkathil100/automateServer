@@ -159,15 +159,9 @@ def arrowAttachJob(data, route_data):
 
         if location_color_hex != None:    
             hex_color = location_color_hex.lstrip('#')
-            if env == 'dev' or env == 'staging':
-                manage_colored_gifs(hex_color, route_id, env)
-            else:
-                manageColoredArrows(location_color_hex, env)
+            manage_colored_gifs(hex_color, route_id, env)
 
-        if env == 'dev' or env == 'staging':
-            animate_arrow_gifs(route_id, file_name, final_directions, hex_color)
-        else:
-            arrow_attachment_main(file_name, final_directions, hex_color)
+        animate_arrow_gifs(route_id, file_name, final_directions, hex_color)
 
         # Change the video codec for making the video small in size
         # ffmpeg -i input.mp4 -c:v libx264 -c:a copy output_h264.mp4
@@ -229,7 +223,7 @@ def arrowAttachJob(data, route_data):
         except Exception as e:
             print('Error removing file')
 
-        if (env == 'dev' or env == 'staging') and hex_color != None:
+        if hex_color != None:
             # remove the colored gifs
             colored_gif_files = os.listdir(gif_path)
             for file in colored_gif_files:
