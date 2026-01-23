@@ -556,13 +556,7 @@ def createRouteAPI():
         thread.daemon = True  # This ensures the thread will be killed when the main program exits
         thread.start()
         thread.join()
-        print('job done')
         
-        files = os.listdir("final")
-        print(files)
-        if local_file_name not in files:
-            print('file not found')
-            raise Exception('File not found')
         # 3) Upload blurred video to S3
         upload_success = upload_video_to_s3(f'final/{local_file_name}', bucket_name, None, env, S3_PATHS.DIY_ROUTES)
         if upload_success == False:
@@ -571,7 +565,6 @@ def createRouteAPI():
 
         # 4) Update the route status
         video_url = f'{Media_Basics.MediaUrlPrefix}/{env}/{S3_PATHS.DIY_ROUTES}/{new_id}.mp4'
-        print('video_url -- ', video_url)
         update_record(Tables.DIY_ROUTES, diy_route_key, {'processStatus': 'ROUTE_CREATE_SUCCESS', 'videoUrl': video_url}, env)
 
         res_data = {
