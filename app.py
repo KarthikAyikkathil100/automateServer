@@ -1,5 +1,5 @@
 import os
-import boto3
+import uuid
 import subprocess
 import threading
 from datetime import datetime
@@ -8,15 +8,17 @@ from animation_gif_helpers import generate_colored_animations, manage_colored_gi
 from blur_automate import blurVideo
 from direction_detection import directionDetection
 from botocore.exceptions import ClientError
-from helpers import download_file_from_s3, get_route_data, get_video_duration, update_route_fields, upload_video_to_s3, store_detected_directions, update_route_field, check_multiple_objects, update_automation_time, download_multiple_files, get_location_data
+from helpers import download_file_from_s3, get_route_data, get_video_duration, update_record, upload_video_to_s3, store_detected_directions, update_route_field, check_multiple_objects, update_automation_time, download_multiple_files, get_location_data, get_record, batch_get_items
 from arrow_attachment import arrow_attachment_main
 from arrow_animations import animate_arrow_gifs
+from diy_segment_helpers import join_vids
 import threading
 from text_blur import text_blur_main
 from tint_color import tint_image
 import logging
 logging.basicConfig(level=logging.INFO)
 import copy
+from constants import Tables, S3_PATHS, Media_Basics
 
 
 
@@ -187,7 +189,7 @@ def arrowAttachJob(data, route_data):
             }
             if total_duration == None:
                 update_data['totalDuration'] = int(video_duration)
-            db_update_success = update_route_fields(route_id, update_data, env)
+            db_update_success = update_record('Routes', {"id": route_id}, update_data, env)
             if db_update_success == False:
                 raise Exception('DB update error')
         elif reRunArrowAttach == False and showAnimationsChanged == True:
@@ -198,7 +200,7 @@ def arrowAttachJob(data, route_data):
             }
             if total_duration == None:
                 update_data['totalDuration'] = int(video_duration)
-            db_update_success = update_route_fields(route_id, update_data, env)
+            db_update_success = update_record('Routes', {"id": route_id}, update_data, env)
             if db_update_success == False:
                 raise Exception('DB update error')
     except Exception as e:
@@ -502,6 +504,94 @@ def faceBlurJob(data, route_data):
             os.remove(f'blurred/{file_name}')
         except Exception as e:
             print('Error while removing blurred file from local')
+
+@app.route('/create-route', methods = ['POST'])
+def createRouteAPI():
+    route_id = None
+    data = request.get_json()
+    env = 'dev'
+    diy_route_key = {
+        'stationId': None,
+        'id': None
+    }
+    local_file_name = None
+    try:
+        if data['env'] != None:
+            env = data['env']
+        route_id = data['route_id']
+        [station_id, diy_route_id] = route_id.split('#')
+        diy_route_key['stationId'] = station_id
+        diy_route_key['id'] = diy_route_id
+        
+        
+        route_data = get_record(Tables.DIY_ROUTES, diy_route_key, ['stationId', 'id', 'status', 'segmentIds'], env)
+        if route_data == None:
+            data = {
+                "message": "Route not found"
+            }
+            return jsonify(data), 404
+
+        if (route_data.get('status', None) != 'SUBMITTED'):
+            data = {
+                "message": "Route not submitted"
+            }
+            return jsonify(data), 404
+
+        update_record(Tables.DIY_ROUTES, diy_route_key, {'processStatus': 'ROUTE_CREATE_START'}, env)
+        update_automation_time(route_id, env)
+
+        segmentIds = route_data.get('segmentIds', [])
+        segment_keys = []
+        for segmentId in segmentIds:
+            [location_id, id] = segmentId.split('#')
+            segment_keys.append({'locationId': location_id, 'id': id})
+
+        segment_data = batch_get_items(Tables.DIY_SEGMENTS, segment_keys, ['locationId', 'id', 'status', 'videoUrl'], env)
+        video_urls = [x.get('videoUrl', None) for x in segment_data]
+        
+
+        new_id = str(uuid.uuid4())
+        local_file_name = f'{new_id}.mp4'
+        thread = threading.Thread(target=join_vids, args=(video_urls, f'final/{local_file_name}'))
+        thread.daemon = True  # This ensures the thread will be killed when the main program exits
+        thread.start()
+        thread.join()
+        print('job done')
+        
+        files = os.listdir("final")
+        print(files)
+        if local_file_name not in files:
+            print('file not found')
+            raise Exception('File not found')
+        # 3) Upload blurred video to S3
+        upload_success = upload_video_to_s3(f'final/{local_file_name}', bucket_name, None, env, S3_PATHS.DIY_ROUTES)
+        if upload_success == False:
+            raise Exception('Upload failed')
+        
+
+        # 4) Update the route status
+        video_url = f'{Media_Basics.MediaUrlPrefix}/{env}/{S3_PATHS.DIY_ROUTES}/{new_id}.mp4'
+        print('video_url -- ', video_url)
+        update_record(Tables.DIY_ROUTES, diy_route_key, {'processStatus': 'ROUTE_CREATE_SUCCESS', 'videoUrl': video_url}, env)
+
+        res_data = {
+            "message": "Route submitted for creation process"
+        }
+        return jsonify(res_data), 200 
+    except Exception as e:
+        print('Error in create route API')
+        print(e)
+        try:
+            update_record(Tables.DIY_ROUTES, diy_route_key, {'processStatus': 'ROUTE_CREATE_ERROR'}, env)
+        except Exception as e:
+            print("Error while updating route status")
+        return "Error while processing request", 500
+    finally:
+        # Remove the file from local storage
+        try:
+            os.remove(f'final/{local_file_name}')
+        except Exception as e:
+            print("Error while removing file from local storage")
 
 
 @app.route('/direction-detection', methods = ['POST'])

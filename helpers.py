@@ -5,11 +5,96 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import psutil
 import time
 import subprocess
+import itertools
+import time
+
 # Initialize DynamoDB resource using boto3
 dynamodb = boto3.resource('dynamodb')
 table_name = 'Routes'
 
-# Define a DynamoDB table (You can create the table manually in AWS or use boto3 to create it)
+
+
+def chunked(iterable, size):
+    it = iter(iterable)
+    while True:
+        chunk = list(itertools.islice(it, size))
+        if not chunk:
+            break
+        yield chunk
+
+
+def build_projection_expression(attributes):
+    """
+    Converts ["id", "name", "status"] into:
+    ProjectionExpression: "#attr0, #attr1, #attr2"
+    ExpressionAttributeNames: {"#attr0": "id", ...}
+    """
+    if not attributes:
+        return None, None
+
+    expr_names = {}
+    expr_parts = []
+
+    for i, attr in enumerate(attributes):
+        placeholder = f"#attr{i}"
+        expr_parts.append(placeholder)
+        expr_names[placeholder] = attr
+
+    projection_expression = ", ".join(expr_parts)
+    return projection_expression, expr_names
+
+def batch_get_items(
+    table,
+    keys,
+    attributes,
+    env='dev',
+    batch_size=100,
+    max_retries=5,
+    backoff_base=0.2,
+):
+    try:
+        table_name = f'{env}-{table}'
+        if batch_size > 100:
+            raise ValueError("DynamoDB batch_get_item max batch size is 100")
+
+        projection_expression, expression_attribute_names = (
+            build_projection_expression(attributes)
+        )
+
+        all_items = []
+
+        for key_batch in chunked(keys, batch_size):
+            request_items = {
+                table_name: {
+                    "Keys": key_batch
+                }
+            }
+
+            if projection_expression:
+                request_items[table_name]["ProjectionExpression"] = projection_expression
+                request_items[table_name]["ExpressionAttributeNames"] = expression_attribute_names
+
+            retries = 0
+            while request_items:
+                response = dynamodb.batch_get_item(RequestItems=request_items)
+
+                items = response.get("Responses", {}).get(table_name, [])
+                all_items.extend(items)
+
+                request_items = response.get("UnprocessedKeys")
+
+                if request_items:
+                    if retries >= max_retries:
+                        raise RuntimeError("Max retries exceeded for UnprocessedKeys")
+
+                    time.sleep(backoff_base * (2 ** retries))
+                    retries += 1
+
+        return all_items
+    except Exception as e:
+        print(e)
+        raise e
+
 
 
 def get_route_data(item_id, env = 'dev'):
@@ -28,6 +113,39 @@ def get_route_data(item_id, env = 'dev'):
     except ClientError as e:
         logging.info('Error while fetching route data')
         return None
+
+
+def get_record(table_name, key, attributes, env = 'dev'):
+    try: 
+        target_table = f'{env}-{table_name}'
+        print(f'target_table --> {target_table}')
+        table = dynamodb.Table(target_table)
+        attributeMap = {}
+        attributePlaceholders = []
+        for idx, attribute in enumerate(attributes):
+            placeholder = f'#attr{idx}'
+            attributePlaceholders.append(placeholder)
+            attributeMap[placeholder] = attribute
+        attributeStr = ', '.join(attributePlaceholders)
+        
+        print(f'attributeStr --> {attributeStr}')
+        print(f'attributeMap --> {attributeMap}')
+        print(f'key --> {key}')
+        response = table.get_item(
+            Key=key,
+            ProjectionExpression=attributeStr,
+            ExpressionAttributeNames=attributeMap
+        )   
+        if 'Item' not in response:
+            return None
+
+        item = response['Item']
+        return item
+    except Exception as e:
+        logging.info(e)
+        logging.info('Error while fetching record from Dynamo DB')
+        return None
+
 
 
 def store_detected_directions(data, key, env = 'dev'):
@@ -71,7 +189,7 @@ def update_route_field(key, field, value, env = 'dev'):
         return False
 
 
-def update_route_fields(key, data: dict, env='dev'):
+def update_record(table_name, key, data: dict, env='dev'):
     """
     Update multiple fields in a DynamoDB item.
     
@@ -100,7 +218,7 @@ def update_route_fields(key, data: dict, env='dev'):
         update_expression = "SET " + ", ".join(update_expr_parts)
 
         table.update_item(
-            Key={'id': key},
+            Key=key,
             UpdateExpression=update_expression,
             ExpressionAttributeNames=expression_attribute_names,
             ExpressionAttributeValues=expression_attribute_values
@@ -177,7 +295,7 @@ def download_multiple_files(bucket_name, files_to_download, download_dir, route_
     return results
 
 
-def upload_video_to_s3(file_path, bucket_name, object_name=None, env='dev'):
+def upload_video_to_s3(file_path, bucket_name, object_name=None, env='dev', path= 'routes'):
     """
     Upload a video file to an S3 bucket.
 
@@ -192,16 +310,19 @@ def upload_video_to_s3(file_path, bucket_name, object_name=None, env='dev'):
 
     try:
         # Upload the file to S3
-        s3.upload_file(file_path, bucket_name, f'{env}/routes/{object_name}')
-        logging.info(f"Upload Successful: {file_path} to {bucket_name}/{env}/routes/{object_name}")
+        s3.upload_file(file_path, bucket_name, f'{env}/{path}/{object_name}')
+        logging.info(f"Upload Successful: {file_path} to {bucket_name}/{env}/{path}/{object_name}")
         return True
-    except FileNotFoundError:
+    except FileNotFoundError as e:
+        print(e)
         logging.info(f"Error: The file {file_path} was not found.")
         return False
-    except NoCredentialsError:
+    except NoCredentialsError as e:
+        print(e)
         logging.info("Error: No AWS credentials found.")
         return False
-    except PartialCredentialsError:
+    except PartialCredentialsError as e:
+        print(e)
         logging.info("Error: Incomplete AWS credentials.")
         return False
     except Exception as e:
