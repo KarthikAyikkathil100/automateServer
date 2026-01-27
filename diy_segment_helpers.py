@@ -266,14 +266,3 @@ def join_vids(urls, output_path):
         
 
 
-# Example usage
-if __name__ == "__main__":
-    # Your video URLs
-    video_urls = [
-        'https://media.rtme.us/staging/routes/processed_1765859982-624191.mp4',
-        'https://media.rtme.us/staging/routes/processed_1765859982-624191.mp4',
-    ]
-    join_vids(video_urls, "output.mp4")
-    print("Done")
-
-

@@ -565,7 +565,7 @@ def createRouteAPI():
 
         # 4) Update the route status
         video_url = f'{Media_Basics.MediaUrlPrefix}/{env}/{S3_PATHS.DIY_ROUTES}/{new_id}.mp4'
-        update_record(Tables.DIY_ROUTES, diy_route_key, {'processStatus': 'ROUTE_CREATION_START', 'videoUrl': video_url}, env)
+        update_record(Tables.DIY_ROUTES, diy_route_key, {'processStatus': 'ROUTE_CREATION_SUCCESS', 'videoUrl': video_url}, env)
 
         res_data = {
             "message": "Route submitted for creation process"

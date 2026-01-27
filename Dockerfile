@@ -76,6 +76,9 @@ COPY old_arrows/ ./old_arrows/
 COPY newGifs/ ./newGifs/
 COPY arrow_animations.py ./arrow_animations.py
 COPY animation_gif_helpers.py ./animation_gif_helpers.py
+COPY diy_segment_helpers.py ./diy_segment_helpers.py
+COPY constants.py ./constants.py
+
 # Verify the installation
 RUN aws --version
 
