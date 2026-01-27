@@ -537,7 +537,7 @@ def createRouteAPI():
             }
             return jsonify(data), 404
 
-        update_record(Tables.DIY_ROUTES, diy_route_key, {'processStatus': 'ROUTE_CREATE_START'}, env)
+        update_record(Tables.DIY_ROUTES, diy_route_key, {'processStatus': 'ROUTE_CREATION_START'}, env)
         update_automation_time(route_id, env)
 
         segmentIds = route_data.get('segmentIds', [])
@@ -565,7 +565,7 @@ def createRouteAPI():
 
         # 4) Update the route status
         video_url = f'{Media_Basics.MediaUrlPrefix}/{env}/{S3_PATHS.DIY_ROUTES}/{new_id}.mp4'
-        update_record(Tables.DIY_ROUTES, diy_route_key, {'processStatus': 'ROUTE_CREATE_SUCCESS', 'videoUrl': video_url}, env)
+        update_record(Tables.DIY_ROUTES, diy_route_key, {'processStatus': 'ROUTE_CREATION_START', 'videoUrl': video_url}, env)
 
         res_data = {
             "message": "Route submitted for creation process"
@@ -575,7 +575,7 @@ def createRouteAPI():
         print('Error in create route API')
         print(e)
         try:
-            update_record(Tables.DIY_ROUTES, diy_route_key, {'processStatus': 'ROUTE_CREATE_ERROR'}, env)
+            update_record(Tables.DIY_ROUTES, diy_route_key, {'processStatus': 'ROUTE_CREATION_ERROR'}, env)
         except Exception as e:
             print("Error while updating route status")
         return "Error while processing request", 500
