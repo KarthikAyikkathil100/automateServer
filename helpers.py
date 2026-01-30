@@ -385,7 +385,10 @@ def update_automation_time(route_id, env='dev'):
         print('Error while storing time')
         return None
 
+def get_current_time():
+    return int(time.time())*1000
 
+    
 def get_location_data(item_id, env='dev', fields=['id']):
     try:
         target_table = f'{env}-Locations'

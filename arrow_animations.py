@@ -5,6 +5,8 @@ from PIL import Image
 from moviepy.editor import concatenate_videoclips
 import numpy as np
 from moviepy.video.fx.loop import loop
+import logging
+logging.basicConfig(level=logging.INFO)
 
 # Each animation/gif duration is 5 sec
 animation_duration = 12

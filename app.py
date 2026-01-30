@@ -1,14 +1,16 @@
 import os
+from tkinter.constants import S
 import uuid
 import subprocess
 import threading
 from datetime import datetime
 from flask import Flask, request, jsonify
+from flask.cli import F
 from animation_gif_helpers import generate_colored_animations, manage_colored_gifs, upload_colored_gifs
 from blur_automate import blurVideo
 from direction_detection import directionDetection
 from botocore.exceptions import ClientError
-from helpers import download_file_from_s3, get_route_data, get_video_duration, update_record, upload_video_to_s3, store_detected_directions, update_route_field, check_multiple_objects, update_automation_time, download_multiple_files, get_location_data, get_record, batch_get_items
+from helpers import download_file_from_s3, get_route_data, get_video_duration, update_record, upload_video_to_s3, store_detected_directions, update_route_field, check_multiple_objects, update_automation_time, download_multiple_files, get_location_data, get_record, batch_get_items, get_current_time
 from arrow_attachment import arrow_attachment_main
 from arrow_animations import animate_arrow_gifs
 from diy_segment_helpers import join_vids
@@ -18,7 +20,7 @@ from tint_color import tint_image
 import logging
 logging.basicConfig(level=logging.INFO)
 import copy
-from constants import Tables, S3_PATHS, Media_Basics
+from constants import Tables, S3_PATHS, Media_Basics, PROCESS_STATUS, ROUTE_ACTION_STATUS
 
 
 
@@ -84,19 +86,61 @@ def arrowAttachAPI():
     file_name = None
     route_id = None
     env = 'dev'
+    diy_route_key = {
+        'stationId': None,
+        'id': None
+    }
+    route_key = {
+        'id': None
+    }
+    diy_segment_key = {
+        'id': None,
+        'locationId': None
+    }
+    is_diy_route_req = False
+    is_diy_segment_req = False
     try:
         data = request.get_json()
         if data['env'] != None:
             env = data['env']
         route_id = data['route_id']
-        route_data = get_route_data(route_id, env)
+
+        if data.get('is_diy_route_req', False) == True:
+            is_diy_route_req = True
+            splits = route_id.split('#')
+            diy_route_key['stationId'] = splits[0]
+            diy_route_key['id'] = splits[1]
+        elif data.get('is_diy_segment_req', False) == True:
+            is_diy_segment_req = True
+            splits = route_id.split('#')
+            diy_segment_key['locationId'] = splits[0]
+            diy_segment_key['id'] = splits[1]
+        else:
+            route_key['id'] = route_id
+
+        req_attributes = [
+            'videoUrl' if (is_diy_route_req == True or is_diy_segment_req == True) else 'videoURL',
+            'locationId' if (is_diy_route_req == True or is_diy_segment_req == True) else 'locId',
+            'totalDuration',
+        ]
+
+        if (is_diy_route_req == True or is_diy_segment_req == True):
+            req_attributes.append('directions')
+        else:
+            req_attributes.append('sourceCaption')
+            req_attributes.append('newSourceCaption')
+            req_attributes.append('showAnimationsChanged')
+            req_attributes.append('reRunArrowAttach')
+
+        route_data = get_record(
+            Tables.DIY_ROUTES if is_diy_route_req == True else Tables.DIY_SEGMENTS if is_diy_segment_req == True else Tables.ROUTES, 
+            diy_route_key if is_diy_route_req == True else diy_segment_key if is_diy_segment_req == True else route_key, 
+            req_attributes, 
+            env
+        )
+
         if route_data == None:
-            data = {
-                "message": "Route not found"
-            }
-            return jsonify(data), 404 
-        update_route_field(route_id, 'processStatus', 'ARROW_ATTACHMENT_START', env)
-        update_automation_time(route_id, env)
+            raise Exception('Route not found')
         thread = threading.Thread(target=arrowAttachJob, args=(data, route_data))
         thread.daemon = True  # This ensures the thread will be killed when the main program exits
         thread.start()
@@ -105,9 +149,24 @@ def arrowAttachAPI():
         }
         return jsonify(res_data), 200 
     except Exception as e:
-        update_route_field(route_id, 'processStatus', 'ARROW_ATTACHMENT_ERROR', env)
         print('Error in arrow attach fn')
         print(e)
+        try:
+            update_db_success = update_record(
+                Tables.DIY_ROUTES if is_diy_route_req == True else Tables.DIY_SEGMENTS if is_diy_segment_req == True else Tables.ROUTES, 
+                diy_route_key if is_diy_route_req == True else diy_segment_key if is_diy_segment_req == True else route_key, 
+                {
+                    'processStatus': PROCESS_STATUS.ARROW_ATTACHMENT_ERROR, 
+                    'automationUpdateAt': get_current_time(),
+                    'actionStatus': ROUTE_ACTION_STATUS.UPDATE_FAILED,
+                }, 
+                env
+            )
+            if update_db_success == False:
+                raise Exception('Error while updating route in DB')
+        except Exception as e:
+            print('Error while updating route in DB')
+            print(e)
         return "Error while processing json file", 500
 
 def arrowAttachJob(data, route_data):
@@ -115,14 +174,53 @@ def arrowAttachJob(data, route_data):
     file_name = None
     env = 'dev'
     hex_color = None
+    diy_route_key = {
+        'stationId': None,
+        'id': None
+    }
+    diy_segment_key = {
+        'locationId': None,
+        'id': None
+    }
+    route_key = {
+        'id': None
+    }
+    is_diy_route_req = False
+    is_diy_segment_req = False
     try:
-        route_id = route_data['id']
+        route_id = data['route_id']
         if data['env'] != None:
             env = data['env']
+
+        if data.get('is_diy_route_req', False) == True:
+            is_diy_route_req = True
+            splits = route_id.split('#')
+            diy_route_key['stationId'] = splits[0]
+            diy_route_key['id'] = splits[1]
+        elif data.get('is_diy_segment_req', False) == True:
+            is_diy_segment_req = True
+            splits = route_id.split('#')
+            diy_segment_key['locationId'] = splits[0]
+            diy_segment_key['id'] = splits[1]
+        else:
+            route_key['id'] = route_id
+
+        
+        update_db_success = update_record(
+            Tables.DIY_ROUTES if is_diy_route_req == True else Tables.DIY_SEGMENTS if is_diy_segment_req == True else Tables.ROUTES, 
+            diy_route_key if is_diy_route_req == True else diy_segment_key if is_diy_segment_req == True else route_key, 
+            {
+                'processStatus': PROCESS_STATUS.ARROW_ATTACHMENT_START, 
+                'automationUpdateAt': get_current_time(),
+            }, 
+            env
+        )
+        if update_db_success == False:
+            raise Exception('Error while updating route in DB')
         new_route = False
-        existingSourceCaption = route_data['sourceCaption']
-        showAnimationsChanged = route_data.get('showAnimationsChanged', False)
-        reRunArrowAttach = route_data.get('reRunArrowAttach', True)
+        existingSourceCaption = route_data['sourceCaption' if (is_diy_route_req == False and is_diy_segment_req == False) else 'directions']
+        showAnimationsChanged = None if (is_diy_route_req == False and is_diy_segment_req == False) else route_data.get('showAnimationsChanged', False)
+        reRunArrowAttach = None if (is_diy_route_req == False and is_diy_segment_req == False) else route_data.get('reRunArrowAttach', True)
         total_duration = route_data.get('totalDuration', None)
 
         if showAnimationsChanged == None:
@@ -132,12 +230,27 @@ def arrowAttachJob(data, route_data):
 
         if existingSourceCaption == None or len(existingSourceCaption) == 0:
             new_route = True
-        update_route_field(route_id, 'processStatus', 'ARROW_ATTACHMENT_START', env)
-        update_automation_time(route_id, env)
+
+        
+        update_db_success = update_record(
+            Tables.DIY_ROUTES if is_diy_route_req == True else Tables.DIY_SEGMENTS if is_diy_segment_req == True else Tables.ROUTES, 
+            diy_route_key if is_diy_route_req == True else diy_segment_key if is_diy_segment_req == True else route_key, 
+            {
+                'processStatus': PROCESS_STATUS.ARROW_ATTACHMENT_START, 
+                'automationUpdateAt': get_current_time(),
+            }, 
+            env
+        )
+        if update_db_success == False:
+            raise Exception('Error while updating route in DB')
         video_url = route_data.get('videoURL')
         file_name = video_url.split('/')[-1]
         logging.info('download of video started')
-        download_file_from_s3(bucket_name, f'{env}/routes/{file_name}', f'blurred/{file_name}')
+        download_file_from_s3(
+            bucket_name, 
+            f'{env}/{S3_PATHS.DIY_ROUTES if is_diy_route_req == True else S3_PATHS.DIY_SEGMENTS if is_diy_segment_req == True else S3_PATHS.ROUTES}/{file_name}', 
+            f'blurred/{file_name}'
+        )
         logging.info('download done')
 
         video_duration = 0
@@ -147,11 +260,14 @@ def arrowAttachJob(data, route_data):
             except Exception as e:
                 print(e)
         
-        print("video_duration -- ", video_duration)
-        final_directions = copy.deepcopy(route_data.get('newSourceCaption') if reRunArrowAttach == True else route_data.get('sourceCaption'))
+        final_directions = copy.deepcopy(
+            route_data.get('directions') if (is_diy_route_req == True or is_diy_segment_req == True)
+            else route_data.get('newSourceCaption') if reRunArrowAttach == True 
+            else route_data.get('sourceCaption')
+        )
         
         logging.info('Arrow attachment start')
-        location_id = route_data.get('locId')
+        location_id = route_data.get('locId' if is_diy_route_req == False else 'locationId')
         location_data = get_location_data(location_id, env, ['id', 'locationColor'])
         location_color_hex = None
         if location_data != None:
@@ -171,46 +287,69 @@ def arrowAttachJob(data, route_data):
         result_dim = subprocess.run(change_codec_command, check=True, capture_output=True, text=True)
         logging.info("Command Output codec:", result_dim.stdout)
         logging.info("Command Error Output codec:", result_dim.stderr)
-        update_automation_time(route_id, env)
 
         new_file_name = f'processed_{file_name}'
-        new_link = f'https://media.rtme.us/{env}/routes/{new_file_name}'
+        new_link = f'https://media.rtme.us/{env}/{S3_PATHS.DIY_ROUTES if is_diy_route_req == True else S3_PATHS.ROUTES}/{new_file_name}'
         db_update_success = False
-        db_update_success = upload_video_to_s3(f'final/codec_{file_name}', bucket_name, new_file_name, env)
+        db_update_success = upload_video_to_s3(
+            f'final/codec_{file_name}', 
+            bucket_name, 
+            new_file_name, 
+            env, 
+            S3_PATHS.DIY_ROUTES if is_diy_route_req == True else S3_PATHS.DIY_SEGMENTS if is_diy_segment_req == True else S3_PATHS.ROUTES
+        )
         if db_update_success == False:
             raise Exception('DB update error')
 
         if reRunArrowAttach == True:
             update_data = {
                 'processedVideoLink': new_link,
-                'sourceCaption': route_data.get('newSourceCaption'),
-                'languageCaptions': route_data.get('newLanguageCaptions'),
-                'processStatus': 'ARROW_ATTACHMENT_SUCCESS'
+                'processStatus': PROCESS_STATUS.ARROW_ATTACHMENT_SUCCESS
             }
+            if is_diy_route_req == False:
+                update_data['sourceCaption'] = route_data.get('newSourceCaption')
+                update_data['languageCaptions'] = route_data.get('newLanguageCaptions')
+
             if total_duration == None:
                 update_data['totalDuration'] = int(video_duration)
-            db_update_success = update_record('Routes', {"id": route_id}, update_data, env)
+            
+            db_update_success = update_record(
+                Tables.DIY_ROUTES if is_diy_route_req == True else Tables.DIY_SEGMENTS if is_diy_segment_req == True else Tables.ROUTES, 
+                diy_route_key if is_diy_route_req == True else diy_segment_key if is_diy_segment_req == True else route_key, 
+                update_data, 
+                env
+            )
             if db_update_success == False:
                 raise Exception('DB update error')
         elif reRunArrowAttach == False and showAnimationsChanged == True:
             update_data = {
                 'showAnimationsChanged': None,
                 'reRunArrowAttach': None,
-                'processStatus': 'ARROW_ATTACHMENT_SUCCESS'
+                'processStatus': PROCESS_STATUS.ARROW_ATTACHMENT_SUCCESS
             }
             if total_duration == None:
                 update_data['totalDuration'] = int(video_duration)
-            db_update_success = update_record('Routes', {"id": route_id}, update_data, env)
+            db_update_success = update_record(Tables.ROUTES, {"id": route_id}, update_data, env)
             if db_update_success == False:
                 raise Exception('DB update error')
     except Exception as e:
         logging.info('Error while processing arrow attachment')
         print(e)
         try:
-            update_route_field(route_id, 'processStatus', 'ARROW_ATTACHMENT_ERROR', env)
-            update_automation_time(route_id, env)
-        except:
+            db_update_success = update_record(
+                Tables.DIY_ROUTES if is_diy_route_req == True else Tables.DIY_SEGMENTS if is_diy_segment_req == True else Tables.ROUTES, 
+                diy_route_key if is_diy_route_req == True else diy_segment_key if is_diy_segment_req == True else route_key, 
+                {
+                    'processStatus': PROCESS_STATUS.ARROW_ATTACHMENT_ERROR,
+                    'automationUpdateAt': get_current_time()
+                }, 
+                env
+            )
+            if db_update_success == False:
+                raise Exception('DB update error')
+        except Exception as e:
             logging.info('Error while updating DB')
+            print(e)
     finally:
         try:
             os.remove(f'blurred/{file_name}')
@@ -234,90 +373,6 @@ def arrowAttachJob(data, route_data):
                     os.remove(f'{colored_gif_path}{file_name}')
                 except Exception as e:
                     print(e)
-
-
-
-# @app.route('/test/direction-change', methods = ['POST'])
-# def processArrowStick():
-#     route_id = None
-#     file_name = None
-#     try:
-#         logging.info('Arrow attachment part')
-#         data = request.get_json()
-#         route_id = data['route_id']
-#         route_data = get_route_data(route_id)
-#         if route_data == None:
-#             logging.info('Route not found')
-#             res_dat = {
-#                 'error': True,
-#                 'message': 'Route not found'
-#             }
-#             return jsonify(res_dat), 404
-
-#         update_route_field(route_id, 'processStatus', 'ARROW_ATTACHMENT_START')
-#         video_url = route_data.get('videoURL')
-#         if video_url == None:
-#             update_route_field(route_id, 'processStatus', 'ARROW_ATTACHMENT_ERROR')
-#             res_dat = {
-#                 'error': True,
-#                 'message': 'Route video not found'
-#             }
-#             return jsonify(res_dat), 404
-#         file_name = video_url.split('/')[-1]
-#         logging.info('download of video started')
-#         download_file_from_s3(bucket_name, f'{file_name}', f'blurred/{file_name}')
-#         logging.info('download done')
-#         final_directions = route_data.get('detectedDirections')
-#         if final_directions == None:
-#             logging.info('no directions found')
-#             update_route_field(route_id, 'processStatus', 'ARROW_ATTACHMENT_ERROR')
-#             res_dat = {
-#                 'error': True,
-#                 'message': 'Direction data not found'
-#             }
-#             return jsonify(res_dat), 404    
-#         logging.info('Arrow attachment start')
-#         arrow_attachment_main(file_name, final_directions)
-
-#         # Change the video codec for making the video small in size
-#         # ffmpeg -i input.mp4 -c:v libx264 -c:a copy output_h264.mp4
-#         change_codec_command = ["ffmpeg", "-i", f'final/{file_name}', '-c:v', 'libx264', '-c:a', 'copy', f'final/codec_{file_name}']
-#         result_dim = subprocess.run(change_codec_command, check=True, capture_output=True, text=True)
-#         logging.info("Command Output codec:", result_dim.stdout)
-#         logging.info("Command Error Output codec:", result_dim.stderr)
-
-#         new_file_name = f'new_{file_name}'
-#         new_link = f'https://s3.ap-south-1.amazonaws.com/media.demo.test/{new_file_name}'
-#         upload_video_to_s3(f'final/codec_{file_name}', bucket_name, new_file_name)
-#         update_route_field(route_id, 'processedVideoURL', new_link)
-#         update_route_field(route_id, 'processStatus', 'ARROW_ATTACHMENT_SUCCESS')
-
-#         res_dat = {
-#             'error': False,
-#             'message': 'Arrow attachment done'
-#         }
-#         return jsonify(res_dat), 200
-#     except Exception as e:
-#         logging.info('Error while processing arrow attachment')
-#         try:
-#             update_route_field(route_id, 'processStatus', 'ARROW_ATTACHMENT_ERROR')
-#         except:
-#             logging.info('Error while updating DB')
-        
-#         res_dat = {
-#             'error': True,
-#             'message': 'Error while processing'
-#         }
-#         return jsonify(res_dat), 200
-#     finally:
-#         try:
-#             os.remove(f'final/{file_name}')
-#         except Exception as e:
-#             print('Error removing file')
-#         try:
-#             os.remove(f'final/codec_{file_name}')
-#         except Exception as e:
-#             print('Error removing file')
     
 
 @app.route('/test/text-blur', methods=['POST'])
@@ -429,18 +484,49 @@ def faceBlurAPI():
     route_id = None
     data = request.get_json()
     env = 'dev'
+    diy_route_key = {
+        'stationId': None,
+        'id': None
+    }
+    route_key = {
+        'id': None
+    }
+    diy_segment_key = {
+        'id': None,
+        'locationId': None
+    }
+    is_diy_route_req = False
+    is_diy_segment_req = False
     try:
         if data['env'] != None:
             env = data['env']
         route_id = data['route_id']
-        route_data = get_route_data(route_id, env)
+
+        if data.get('is_diy_route_req', False) == True:
+            is_diy_route_req = True
+            splits = route_id.split('#')
+            diy_route_key['stationId'] = splits[0]
+            diy_route_key['id'] = splits[1]
+        elif data.get('is_diy_segment_req', False) == True:
+            is_diy_segment_req = True
+            splits = route_id.split('#')
+            diy_segment_key['locationId'] = splits[0]
+            diy_segment_key['id'] = splits[1]
+        else:
+            route_key['id'] = route_id
+
+        route_data = get_record(
+            Tables.DIY_ROUTES if is_diy_route_req == True else Tables.DIY_SEGMENTS if is_diy_segment_req == True else Tables.ROUTES, 
+            diy_route_key if is_diy_route_req == True else diy_segment_key if is_diy_segment_req == True else route_key, 
+            ['videoURL'], 
+            env
+        )
         if route_data == None:
             data = {
                 "message": "Route not found"
             }
             return jsonify(data), 404
-        update_route_field(route_id, 'processStatus', 'FACE_BLUR_START', env)
-        update_automation_time(route_id, env)
+        
         thread = threading.Thread(target=faceBlurJob, args=(data, route_data))
         thread.daemon = True  # This ensures the thread will be killed when the main program exits
         thread.start()
@@ -451,16 +537,31 @@ def faceBlurAPI():
     except Exception as e:
         print('Error in face blur')
         print(e)
-        update_route_field(route_id, 'processStatus', 'FACE_BLUR_ERROR', env)
-        update_automation_time(route_id, env)
+        # TODO: update here
+        # update_route_field(route_id, 'processStatus', 'FACE_BLUR_ERROR', env)
+        # update_automation_time(route_id, env)
         return "Error while processing json file", 500
 
 
 
-def faceBlurJob(data, route_data):
+def faceBlurJob(data, route_data, keys):
     route_id = None
     file_name = None
     env = 'dev'
+    
+    diy_route_key = {
+        'stationId': None,
+        'id': None
+    }
+    route_key = {
+        'id': None
+    }
+    diy_segment_key = {
+        'id': None,
+        'locationId': None
+    }
+    is_diy_route_req = False
+    is_diy_segment_req = False
     try:
         route_id = data['route_id']
         blur = data.get('blur')
@@ -468,36 +569,97 @@ def faceBlurJob(data, route_data):
             env = data['env']
         update_field_success = False
 
+        if data.get('is_diy_route_req', False) == True:
+            is_diy_route_req = True
+            splits = route_id.split('#')
+            diy_route_key['stationId'] = splits[0]
+            diy_route_key['id'] = splits[1]
+        elif data.get('is_diy_segment_req', False) == True:
+            is_diy_segment_req = True
+            splits = route_id.split('#')
+            diy_segment_key['locationId'] = splits[0]
+            diy_segment_key['id'] = splits[1]
+        else:
+            route_key['id'] = route_id
+
         # Need to run blur script, direction detection script and submit to route DB
         # 1) Download the video from s3 and save in local
         logging.info('Blurring start')
-        update_field_success = update_route_field(route_id, 'processStatus', 'FACE_BLUR_START', env)
-        update_automation_time(route_id, env)
+        update_field_success = update_record(
+            Tables.DIY_ROUTES if is_diy_route_req == True else Tables.DIY_SEGMENTS if is_diy_segment_req == True else Tables.ROUTES, 
+            diy_route_key if is_diy_route_req == True else diy_segment_key if is_diy_segment_req == True else route_key, 
+            {
+                'processStatus': PROCESS_STATUS.FACE_BLUR_START, 
+                'automationUpdateAt': get_current_time()
+            }, 
+            env
+        )
+        
         if update_field_success == False:
             raise Exception('Update DB failed')
         video_url = route_data['videoURL']
         file_name = video_url.split('/')[-1]
-        download_success = download_file_from_s3(bucket_name, f'{env}/routes/{file_name}', f'inputs/{file_name}')
+        download_success = download_file_from_s3(
+            bucket_name, 
+            f'{env}/{S3_PATHS.DIY_ROUTES if is_diy_route_req == True else S3_PATHS.DIY_SEGMENTS if is_diy_segment_req == True else S3_PATHS.ROUTES}/{file_name}', 
+            f'inputs/{file_name}'
+        )
         if download_success == False:
             raise Exception('download failed')
 
         # 2) Blur the video
         blur_success = blurVideo(file_name)
-        update_automation_time(route_id, env)
+        
         if blur_success != True:
             raise 'Blur error'
         logging.info('blur complete')
 
+        update_record(
+            Tables.DIY_ROUTES if is_diy_route_req == True else Tables.DIY_SEGMENTS if is_diy_segment_req == True else Tables.ROUTES, 
+            diy_route_key if is_diy_route_req == True else diy_segment_key if is_diy_segment_req == True else route_key, 
+            {
+                'automationUpdateAt': get_current_time()
+            }, 
+            env
+        )
+
         # 3) Upload blurred video to S3
-        update_field_success = upload_video_to_s3(f'blurred/{file_name}', bucket_name, None, env)
+        upload_success = upload_video_to_s3(
+            f'blurred/{file_name}', 
+            bucket_name, 
+            None, 
+            env, 
+            S3_PATHS.DIY_ROUTES if is_diy_route_req == True else S3_PATHS.DIY_SEGMENTS if is_diy_segment_req == True else S3_PATHS.ROUTES
+        )
+        if upload_success == False:
+            raise Exception('Upload failed')
+
+
+        update_field_success = False
+        update_field_success = update_record(
+            Tables.DIY_ROUTES if is_diy_route_req == True else Tables.DIY_SEGMENTS if is_diy_segment_req == True else Tables.ROUTES, 
+            diy_route_key if is_diy_route_req == True else diy_segment_key if is_diy_segment_req == True else route_key, 
+            {
+                'processStatus': PROCESS_STATUS.FACE_BLUR_SUCCESS, 
+                'automationUpdateAt': get_current_time()
+            }, 
+            env
+        )
         if update_field_success == False:
             raise Exception('Update DB failed')
-
-        update_route_field(route_id, 'processStatus', 'FACE_BLUR_SUCCESS', env)
-        update_automation_time(route_id, env)
     except Exception as e:
-        update_route_field(route_id, 'processStatus', 'FACE_BLUR_ERROR', env)
-        update_automation_time(route_id, env)
+        update_field_success = False
+        update_field_success = update_record(
+            Tables.DIY_ROUTES if is_diy_route_req == True else Tables.DIY_SEGMENTS if is_diy_segment_req == True else Tables.ROUTES, 
+            diy_route_key if is_diy_route_req == True else diy_segment_key if is_diy_segment_req == True else route_key, 
+            {
+                'processStatus': PROCESS_STATUS.FACE_BLUR_ERROR, 
+                'automationUpdateAt': get_current_time()
+            }, 
+            env
+        )
+        if update_field_success == False:
+            print('Update DB failed')
         print(e)
     finally:
         try:
@@ -549,24 +711,12 @@ def createRouteAPI():
         segment_data = batch_get_items(Tables.DIY_SEGMENTS, segment_keys, ['locationId', 'id', 'status', 'videoUrl'], env)
         video_urls = [x.get('videoUrl', None) for x in segment_data]
         
-
         new_id = str(uuid.uuid4())
-        local_file_name = f'{new_id}.mp4'
-        thread = threading.Thread(target=join_vids, args=(video_urls, f'final/{local_file_name}'))
+
+        thread = threading.Thread(target=createRouteJob, args=(diy_route_key, video_urls, new_id, env))
         thread.daemon = True  # This ensures the thread will be killed when the main program exits
         thread.start()
-        thread.join()
         
-        # 3) Upload blurred video to S3
-        upload_success = upload_video_to_s3(f'final/{local_file_name}', bucket_name, None, env, S3_PATHS.DIY_ROUTES)
-        if upload_success == False:
-            raise Exception('Upload failed')
-        
-
-        # 4) Update the route status
-        video_url = f'{Media_Basics.MediaUrlPrefix}/{env}/{S3_PATHS.DIY_ROUTES}/{new_id}.mp4'
-        update_record(Tables.DIY_ROUTES, diy_route_key, {'processStatus': 'ROUTE_CREATION_SUCCESS', 'videoUrl': video_url}, env)
-
         res_data = {
             "message": "Route submitted for creation process"
         }
@@ -586,21 +736,78 @@ def createRouteAPI():
         except Exception as e:
             print("Error while removing file from local storage")
 
+def createRouteJob(diy_route_key, video_urls, new_id, env = 'dev'):
+    try:
+        local_file_name = f'{new_id}.mp4'
+
+        # 1) Join the segments
+        join_vids(video_urls, f'final/{local_file_name}')
+
+        # 2) Upload video to S3
+        upload_success = upload_video_to_s3(f'final/{local_file_name}', bucket_name, None, env, S3_PATHS.DIY_ROUTES)
+        if upload_success == False:
+            raise Exception('Upload failed')
+        
+        # 3) Update the route status
+        video_url = f'{Media_Basics.MediaUrlPrefix}/{env}/{S3_PATHS.DIY_ROUTES}/{new_id}.mp4'
+        update_record(Tables.DIY_ROUTES, diy_route_key, {'processStatus': 'ROUTE_CREATION_SUCCESS', 'videoURL': video_url}, env)
+    except Exception as e:
+        print('Error in create route API')
+        print(e)
+        try:
+            update_record(Tables.DIY_ROUTES, diy_route_key, {'processStatus': 'ROUTE_CREATION_ERROR'}, env)
+        except Exception as e:
+            print("Error while updating route status")
+        return "Error while processing request", 500
+
+
 
 @app.route('/direction-detection', methods = ['POST'])
 def directionDetectionAPI():
     route_id = None
     env = 'dev'
     data = request.get_json()
+    diy_route_key = {
+        'stationId': None,
+        'id': None
+    }
+    route_key = {
+        'id': None
+    }
+    diy_segment_key = {
+        'id': None,
+        'locationId': None
+    }
+    is_diy_route_req = False
+    is_diy_segment_req = False
     try:
         if data['env'] != None:
             env = data['env']
         route_id = data['route_id']
-        route_data = get_route_data(route_id, env)
+
+        if data.get('is_diy_route_req', False) == True:
+            is_diy_route_req = True
+            splits = route_id.split('#')
+            diy_route_key['stationId'] = splits[0]
+            diy_route_key['id'] = splits[1]
+        elif data.get('is_diy_segment_req', False) == True:
+            is_diy_segment_req = True
+            splits = route_id.split('#')
+            diy_segment_key['locationId'] = splits[0]
+            diy_segment_key['id'] = splits[1]
+        else:
+            route_key['id'] = route_id
+
+        route_data = get_record(
+            Tables.DIY_ROUTES if is_diy_route_req == True else Tables.DIY_SEGMENTS if is_diy_segment_req == True else Tables.ROUTES, 
+            diy_route_key if is_diy_route_req == True else diy_segment_key if is_diy_segment_req == True else route_key, 
+            ['videoURL'], 
+            env
+        )
+
         if route_data == None:
             raise Exception('Route not found')
-        update_route_field(route_id, 'processStatus', 'DIRECTION_DETECTION_START', env)
-        update_automation_time(route_id, env)
+
         thread = threading.Thread(target=directionDetectionJob, args=(data, route_data))
         thread.daemon = True  # This ensures the thread will be killed when the main program exits
         thread.start()
@@ -609,22 +816,82 @@ def directionDetectionAPI():
         }
         return jsonify(res_data), 200 
     except Exception as e:
-        print('Error in face blur')
+        print('Error in direction detection')
         print(e)
-        update_route_field(route_id, 'processStatus', 'DIRECTION_DETECTION_ERROR', env)
-        return "Error while processing json file", 500
+        try:
+            update_db_success = update_record(
+                Tables.DIY_ROUTES if is_diy_route_req == True else Tables.DIY_SEGMENTS if is_diy_segment_req == True else Tables.ROUTES, 
+                diy_route_key if is_diy_route_req == True else diy_segment_key if is_diy_segment_req == True else route_key, 
+                {
+                    'processStatus': PROCESS_STATUS.DIRECTION_DETECTION_ERROR, 
+                    'automationUpdateAt': get_current_time(),
+                    'actionStatus': ROUTE_ACTION_STATUS.UPDATE_FAILED,
+                }, 
+                env
+            )
+            if update_db_success == False:
+                raise Exception('Error while updating route in DB')
+        except Exception as e:
+            print('Error while updating route in DB')
+            print(e)
+        return "Error while processing direction detection", 500
 
 def directionDetectionJob(data, route_data):
     route_id = None
     file_name = None
     env = 'dev'
+    diy_route_key = {
+        'stationId': None,
+        'id': None
+    }
+    route_key = {
+        'id': None
+    }
+    diy_segment_key = {
+        'id': None,
+        'locationId': None
+    }
+    is_diy_route_req = False
+    is_diy_segment_req = False
     try:
         if data['env'] != None:
             env = data['env']
-        route_id = route_data['id']
+        route_id = data['route_id']
+
+
+        if data.get('is_diy_route_req', False) == True:
+            is_diy_route_req = True
+            splits = route_id.split('#')
+            diy_route_key['stationId'] = splits[0]
+            diy_route_key['id'] = splits[1]
+        elif data.get('is_diy_segment_req', False) == True:
+            is_diy_segment_req = True
+            splits = route_id.split('#')
+            diy_segment_key['locationId'] = splits[0]
+            diy_segment_key['id'] = splits[1]
+        else:
+            route_key['id'] = route_id
+
+        update_db_success = update_record(
+            Tables.DIY_ROUTES if is_diy_route_req == True else Tables.DIY_SEGMENTS if is_diy_segment_req == True else Tables.ROUTES, 
+            diy_route_key if is_diy_route_req == True else diy_segment_key if is_diy_segment_req == True else route_key, 
+            {
+                'processStatus': PROCESS_STATUS.DIRECTION_DETECTION_START, 
+                'automationUpdateAt': get_current_time(),
+            }, 
+            env
+        )
+        if update_db_success == False:
+            raise Exception('Error while updating route in DB')
+
+
         video_url = route_data['videoURL']
         file_name = video_url.split('/')[-1]
-        download_success = download_file_from_s3(bucket_name, f'{env}/routes/{file_name}', f'blurred/{file_name}')
+        download_success = download_file_from_s3(
+            bucket_name, 
+            f'{env}/{S3_PATHS.DIY_ROUTES if is_diy_route_req == True else S3_PATHS.DIY_SEGMENTS if is_diy_segment_req == True else S3_PATHS.ROUTES}/{file_name}', 
+            f'blurred/{file_name}'
+        )
         if download_success == False:
             raise Exception('download failed')
         logging.info('Starting the direction detection')
@@ -632,19 +899,40 @@ def directionDetectionJob(data, route_data):
         if final_directions == False:
             raise Exception('Error while generating directions')
         # Store these directions in dynamo table
-        store_detected_directions(final_directions, route_id, env)
-        update_db_success = update_route_field(route_id, 'processStatus', 'DIRECTION_DETECTION_SUCCESS', env)
-        update_automation_time(route_id, env)
+        
+        update_db_success = update_record(
+            Tables.DIY_ROUTES if is_diy_route_req == True else Tables.DIY_SEGMENTS if is_diy_segment_req == True else Tables.ROUTES, 
+            diy_route_key if is_diy_route_req == True else diy_segment_key if is_diy_segment_req == True else route_key, 
+            {
+                'processStatus': PROCESS_STATUS.DIRECTION_DETECTION_SUCCESS, 
+                'automationUpdateAt': get_current_time(),
+                'actionStatus': ROUTE_ACTION_STATUS.UPDATED,
+                f'{"newSourceCaption" if is_diy_route_req == False else "directions"}': final_directions
+            }, 
+            env
+        )
+
         if update_db_success == False:
-            raise Exception('DB update failed')
-        update_db_success = update_route_field(route_id, 'actionStatus', 'Updated', env)
-        update_automation_time(route_id, env)
-        if update_db_success == False:
-            raise Exception('DB update failed')
+            raise Exception('Error while updating route in DB')
+        
         logging.info('Done :+1')
     except Exception as e:
-        update_route_field(route_id, 'processStatus', 'DIRECTION_DETECTION_ERROR', env)
-        update_automation_time(route_id, env)
+        try:
+            update_db_success = update_record(
+                Tables.DIY_ROUTES if is_diy_route_req == True else Tables.DIY_SEGMENTS if is_diy_segment_req == True else Tables.ROUTES, 
+                diy_route_key if is_diy_route_req == True else diy_segment_key if is_diy_segment_req == True else route_key, 
+                {
+                    'processStatus': PROCESS_STATUS.DIRECTION_DETECTION_ERROR, 
+                    'automationUpdateAt': get_current_time(),
+                    'actionStatus': ROUTE_ACTION_STATUS.UPDATE_FAILED,
+                }, 
+                env
+            )
+            if update_db_success == False:
+                raise Exception('Error while updating route in DB')
+        except Exception as e:
+            print('Error while updating route in DB')
+            print(e)
         print(e)
     finally:
         try:

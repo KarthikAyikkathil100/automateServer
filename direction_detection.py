@@ -187,7 +187,6 @@ def directionDetection(file_name):
 
         total_frames = round(cam.get(cv2.CAP_PROP_FRAME_COUNT))
         routeFramesParallelProcess = int(total_frames*0.1)
-        print(f'routeFramesParallelProcess => {routeFramesParallelProcess}')
         chunks = math.floor(total_frames/routeFramesParallelProcess) + 1 # Total frame segments which will be processed
         frames_split_meta = getFrameSplits(chunks, total_frames, routeFramesParallelProcess)
         input_tuple = []
@@ -207,7 +206,7 @@ def directionDetection(file_name):
         # cur_glitch = prev.copy()
         # frame_count = 0
 
-        logging.info('Video fps => ', fps)
+        logging.info(f'Video fps => {fps}')
         # process_pool.map(process_vid_segment, input_tuple)
         results = list(process_pool.map(process_vid_segment, input_tuple))
         # with open(f'multithreaded_ou/{file_name}.json', 'w') as json_file:
