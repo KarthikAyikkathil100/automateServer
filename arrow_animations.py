@@ -407,6 +407,7 @@ def animate_arrow_gifs(route_id, vid_name, source_caption, hex_color = None):
         )
     except Exception as e:
         print(e)
+        print("Error inside animation fn")
         try:
             update_route_field(route_id, 'processStatus', 'ARROW_ATTACHMENT_ERROR')
         except Exception as e:

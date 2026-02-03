@@ -119,7 +119,7 @@ def arrowAttachAPI():
             route_key['id'] = route_id
 
         req_attributes = [
-            'videoUrl' if (is_diy_route_req == True or is_diy_segment_req == True) else 'videoURL',
+            'videoURL',
             'locationId' if (is_diy_route_req == True or is_diy_segment_req == True) else 'locId',
             'totalDuration',
         ]
@@ -129,6 +129,7 @@ def arrowAttachAPI():
         else:
             req_attributes.append('sourceCaption')
             req_attributes.append('newSourceCaption')
+            req_attributes.append('newLanguageCaptions')
             req_attributes.append('showAnimationsChanged')
             req_attributes.append('reRunArrowAttach')
 
@@ -167,7 +168,7 @@ def arrowAttachAPI():
         except Exception as e:
             print('Error while updating route in DB')
             print(e)
-        return "Error while processing json file", 500
+        return "Error while processing Arrow animation", 500
 
 def arrowAttachJob(data, route_data):
     route_id = None
@@ -289,7 +290,7 @@ def arrowAttachJob(data, route_data):
         logging.info("Command Error Output codec:", result_dim.stderr)
 
         new_file_name = f'processed_{file_name}'
-        new_link = f'https://media.rtme.us/{env}/{S3_PATHS.DIY_ROUTES if is_diy_route_req == True else S3_PATHS.ROUTES}/{new_file_name}'
+        new_link = f'https://media.rtme.us/{env}/{S3_PATHS.DIY_ROUTES if is_diy_route_req == True else S3_PATHS.DIY_SEGMENTS if is_diy_segment_req == True else S3_PATHS.ROUTES}/{new_file_name}'
         db_update_success = False
         db_update_success = upload_video_to_s3(
             f'final/codec_{file_name}', 
@@ -300,13 +301,12 @@ def arrowAttachJob(data, route_data):
         )
         if db_update_success == False:
             raise Exception('DB update error')
-
         if reRunArrowAttach == True:
             update_data = {
                 'processedVideoLink': new_link,
                 'processStatus': PROCESS_STATUS.ARROW_ATTACHMENT_SUCCESS
             }
-            if is_diy_route_req == False:
+            if is_diy_route_req == False and is_diy_segment_req == False:
                 update_data['sourceCaption'] = route_data.get('newSourceCaption')
                 update_data['languageCaptions'] = route_data.get('newLanguageCaptions')
 
@@ -544,7 +544,7 @@ def faceBlurAPI():
 
 
 
-def faceBlurJob(data, route_data, keys):
+def faceBlurJob(data, route_data):
     route_id = None
     file_name = None
     env = 'dev'
@@ -708,8 +708,8 @@ def createRouteAPI():
             [location_id, id] = segmentId.split('#')
             segment_keys.append({'locationId': location_id, 'id': id})
 
-        segment_data = batch_get_items(Tables.DIY_SEGMENTS, segment_keys, ['locationId', 'id', 'status', 'videoUrl'], env)
-        video_urls = [x.get('videoUrl', None) for x in segment_data]
+        segment_data = batch_get_items(Tables.DIY_SEGMENTS, segment_keys, ['locationId', 'id', 'status', 'processedVideoLink'], env)
+        video_urls = [x.get('processedVideoLink', None) for x in segment_data]
         
         new_id = str(uuid.uuid4())
 
@@ -907,7 +907,7 @@ def directionDetectionJob(data, route_data):
                 'processStatus': PROCESS_STATUS.DIRECTION_DETECTION_SUCCESS, 
                 'automationUpdateAt': get_current_time(),
                 'actionStatus': ROUTE_ACTION_STATUS.UPDATED,
-                f'{"newSourceCaption" if is_diy_route_req == False else "directions"}': final_directions
+                f'{"newSourceCaption" if is_diy_route_req == False and is_diy_segment_req == False else "directions"}': final_directions
             }, 
             env
         )
