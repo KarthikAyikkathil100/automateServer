@@ -380,19 +380,63 @@ def testTextBlur():
     file_name = None
     route_id = None
     env = 'dev'
+    diy_route_key = {
+        'stationId': None,
+        'id': None
+    }
+    route_key = {
+        'id': None
+    }
+    diy_segment_key = {
+        'id': None,
+        'locationId': None
+    }
+    is_diy_route_req = False
+    is_diy_segment_req = False
     try:
         data = request.get_json()
         if data['env'] != None:
             env = data['env']
         route_id = data['route_id']
-        route_data = get_route_data(route_id, env)
+
+        if data.get('is_diy_route_req', False) == True:
+            is_diy_route_req = True
+            splits = route_id.split('#')
+            diy_route_key['stationId'] = splits[0]
+            diy_route_key['id'] = splits[1]
+        elif data.get('is_diy_segment_req', False) == True:
+            is_diy_segment_req = True
+            splits = route_id.split('#')
+            diy_segment_key['locationId'] = splits[0]
+            diy_segment_key['id'] = splits[1]
+        else:
+            route_key['id'] = route_id
+        
+        req_attributes = ['textBlurJsonFileName', 'videoURL']
+        route_data = get_record(
+            Tables.DIY_ROUTES if is_diy_route_req == True else Tables.DIY_SEGMENTS if is_diy_segment_req == True else Tables.ROUTES, 
+            diy_route_key if is_diy_route_req == True else diy_segment_key if is_diy_segment_req == True else route_key, 
+            req_attributes, 
+            env
+        )
         if route_data == None:
             data = {
                 "message": "Route not found"
             }
             return jsonify(data), 404 
-        update_route_field(route_id, 'processStatus', 'TEXT_BLUR_START', env)
-        update_automation_time(route_id, env)
+
+        update_db_success = update_record(
+            Tables.DIY_ROUTES if is_diy_route_req == True else Tables.DIY_SEGMENTS if is_diy_segment_req == True else Tables.ROUTES, 
+            diy_route_key if is_diy_route_req == True else diy_segment_key if is_diy_segment_req == True else route_key, 
+            {
+                'processStatus': PROCESS_STATUS.TEXT_BLUR_START, 
+                'automationUpdateAt': get_current_time(),
+            }, 
+            env
+        )
+        if update_db_success == False:
+            raise Exception('Error while updating route in DB')
+
         thread = threading.Thread(target=textBlurJob, args=(data, route_data))
         thread.daemon = True  # This ensures the thread will be killed when the main program exits
         thread.start()
@@ -411,13 +455,45 @@ def testTextBlur():
 
 def textBlurJob(data, route_data):
     route_id = None
+    file_name = None
     env = 'dev'
+    hex_color = None
+    diy_route_key = {
+        'stationId': None,
+        'id': None
+    }
+    diy_segment_key = {
+        'locationId': None,
+        'id': None
+    }
+    route_key = {
+        'id': None
+    }
+    is_diy_route_req = False
+    is_diy_segment_req = False
     try:
         if data['env'] != None:
             env = data['env']
         db_update_success = False
         route_id = data['route_id']
-        # route_data = get_route_data(route_id)
+
+        route_id = data['route_id']
+        if data['env'] != None:
+            env = data['env']
+
+        if data.get('is_diy_route_req', False) == True:
+            is_diy_route_req = True
+            splits = route_id.split('#')
+            diy_route_key['stationId'] = splits[0]
+            diy_route_key['id'] = splits[1]
+        elif data.get('is_diy_segment_req', False) == True:
+            is_diy_segment_req = True
+            splits = route_id.split('#')
+            diy_segment_key['locationId'] = splits[0]
+            diy_segment_key['id'] = splits[1]
+        else:
+            route_key['id'] = route_id
+        
         json_file_path = route_data['textBlurJsonFileName']
         if json_file_path == None:
             raise Exception('Text blur file not found')
@@ -428,10 +504,23 @@ def textBlurJob(data, route_data):
             print('Route Video not found')
         file_name = video_url.split('/')[-1]
         print('Started downloading the Video File to be processed')
-        db_update_success = download_file_from_s3(bucket_name, f'{env}/routes/{file_name}', f'inputs/{file_name}')
-        update_automation_time(route_id, env)
-        if db_update_success == False:
-           raise Exception('Download failed')
+        download_s3_path = S3_PATHS.DIY_ROUTES if is_diy_route_req == True else S3_PATHS.DIY_SEGMENTS if is_diy_segment_req == True else S3_PATHS.ROUTES 
+        db_update_success = download_file_from_s3(
+            bucket_name, 
+            f'{env}/{download_s3_path}/{file_name}', 
+            f'inputs/{file_name}'
+        )
+        update_db_success = update_record(
+            Tables.DIY_ROUTES if is_diy_route_req == True else Tables.DIY_SEGMENTS if is_diy_segment_req == True else Tables.ROUTES, 
+            diy_route_key if is_diy_route_req == True else diy_segment_key if is_diy_segment_req == True else route_key, 
+            {
+                'processStatus': PROCESS_STATUS.ARROW_ATTACHMENT_START, 
+                'automationUpdateAt': get_current_time(),
+            }, 
+            env
+        )
+        if update_db_success == False:
+            raise Exception('Error while updating route in DB')
         
         # Download the Google's Video Intelligence text-blur output stored in the AWS-S3
         json_file_name = json_file_path.split('/')[-1]
@@ -450,20 +539,46 @@ def textBlurJob(data, route_data):
             # Upload the text-blurred video to S3
             change_codec_command = ["ffmpeg", "-i", f'final/{file_name}', '-c:v', 'libx264', '-c:a', 'copy', f'final/codec_{file_name}']
             result_dim = subprocess.run(change_codec_command, check=True, capture_output=True, text=True)    
-            db_update_success = upload_video_to_s3(f'final/codec_{file_name}', bucket_name, file_name, env)
+            db_update_success = upload_video_to_s3(
+                f'final/codec_{file_name}', 
+                bucket_name, 
+                file_name, 
+                env,
+                S3_PATHS.DIY_ROUTES if is_diy_route_req == True else S3_PATHS.DIY_SEGMENTS if is_diy_segment_req == True else S3_PATHS.ROUTES
+            )
             if db_update_success == False:
                raise Exception('DB update failed')
             # Remove file from local
             os.remove(f'final/{file_name}')
             os.remove(f'final/codec_{file_name}')
-            db_update_success = update_route_field(route_id, 'processStatus', 'TEXT_BLUR_SUCCESS', env)
-            update_automation_time(route_id, env)
+            update_db_success = update_record(
+                Tables.DIY_ROUTES if is_diy_route_req == True else Tables.DIY_SEGMENTS if is_diy_segment_req == True else Tables.ROUTES, 
+                diy_route_key if is_diy_route_req == True else diy_segment_key if is_diy_segment_req == True else route_key, 
+                {
+                    'processStatus': PROCESS_STATUS.TEXT_BLUR_SUCCESS, 
+                    'automationUpdateAt': get_current_time(),
+                }, 
+                env
+            )
             if db_update_success == False:
                 raise Exception('DB update failed')
             return
-        update_automation_time(route_id, env)
     except Exception as e:
-        update_route_field(route_id, 'processStatus', 'TEXT_BLUR_ERROR', env)
+        try:
+            update_db_success = update_record(
+                Tables.DIY_ROUTES if is_diy_route_req == True else Tables.DIY_SEGMENTS if is_diy_segment_req == True else Tables.ROUTES, 
+                diy_route_key if is_diy_route_req == True else diy_segment_key if is_diy_segment_req == True else route_key, 
+                {
+                    'processStatus': PROCESS_STATUS.TEXT_BLUR_ERROR, 
+                    'automationUpdateAt': get_current_time(),
+                }, 
+                env
+            )
+            if db_update_success == False:
+                raise Exception('DB update failed')
+        except Exception as e:
+            print('Error while updating route in DB')
+            
         print('Error in text blur')
         print(e)
         return "Error while processing json file", 500
@@ -750,7 +865,12 @@ def createRouteJob(diy_route_key, video_urls, new_id, env = 'dev'):
         
         # 3) Update the route status
         video_url = f'{Media_Basics.MediaUrlPrefix}/{env}/{S3_PATHS.DIY_ROUTES}/{new_id}.mp4'
-        update_record(Tables.DIY_ROUTES, diy_route_key, {'processStatus': 'ROUTE_CREATION_SUCCESS', 'videoURL': video_url}, env)
+        update_record(
+            Tables.DIY_ROUTES, 
+            diy_route_key, 
+            {'processStatus': PROCESS_STATUS.ROUTE_CREATION_SUCCESS, 'videoURL': video_url, 'actionStatus': ROUTE_ACTION_STATUS.CREATED}, 
+            env
+        )
     except Exception as e:
         print('Error in create route API')
         print(e)
