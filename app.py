@@ -510,17 +510,6 @@ def textBlurJob(data, route_data):
             f'{env}/{download_s3_path}/{file_name}', 
             f'inputs/{file_name}'
         )
-        update_db_success = update_record(
-            Tables.DIY_ROUTES if is_diy_route_req == True else Tables.DIY_SEGMENTS if is_diy_segment_req == True else Tables.ROUTES, 
-            diy_route_key if is_diy_route_req == True else diy_segment_key if is_diy_segment_req == True else route_key, 
-            {
-                'processStatus': PROCESS_STATUS.ARROW_ATTACHMENT_START, 
-                'automationUpdateAt': get_current_time(),
-            }, 
-            env
-        )
-        if update_db_success == False:
-            raise Exception('Error while updating route in DB')
         
         # Download the Google's Video Intelligence text-blur output stored in the AWS-S3
         json_file_name = json_file_path.split('/')[-1]

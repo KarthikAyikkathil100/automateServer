@@ -155,7 +155,6 @@ def finalDirectionGrouping(data: List[DirectionData]) -> List[DirectionData]:
                         'startTime': latestNewDirection.get('startTime'),
                         'endTime': prevInstance.get('endTime'),
                         'directionIcon': latestNewDirection.get('directionIcon'),
-                        'message': latestNewDirection.get('message'),
                         'description': latestNewDirection.get('description')
                     })
                     latestNewDirection = directionInstance
