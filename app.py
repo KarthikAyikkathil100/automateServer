@@ -11,14 +11,13 @@ from botocore.exceptions import ClientError
 from helpers import download_file_from_s3, get_route_data, get_video_duration, update_route_fields, upload_video_to_s3, store_detected_directions, update_route_field, check_multiple_objects, update_automation_time, download_multiple_files, get_location_data
 from arrow_attachment import arrow_attachment_main
 from arrow_animations import animate_arrow_gifs
-import threading
 from text_blur import text_blur_main
 from tint_color import tint_image
 import logging
 logging.basicConfig(level=logging.INFO)
 import copy
-
-
+import psutil
+import time
 
 bucket_name = 'media.rtme.us'
 app = Flask(__name__)
@@ -29,6 +28,29 @@ old_arrow_path = 'old_arrows/'
 gif_path = 'newGifs/'
 colored_gif_path = 'colored_gifs/'
 files = os.listdir(old_arrow_path)
+
+
+
+def monitor_system(interval=5):
+    psutil.cpu_percent()
+
+    while True:
+        cpu = psutil.cpu_percent()
+        ram = psutil.virtual_memory().percent
+        disk = psutil.disk_usage('/').percent
+
+        logging.info(
+            f"[SYSTEM] CPU:{cpu}% RAM:{ram}% DISK:{disk}%"
+        )
+
+        time.sleep(interval)
+
+
+# Start monitoring in background
+# monitor_thread = threading.Thread(target=monitor_system, args=(5,), daemon=True)
+# monitor_thread.start()
+
+
 def manageColoredArrows(location_color_hex, env='dev'):
     try:
         if location_color_hex == None: return None
@@ -103,9 +125,9 @@ def arrowAttachAPI():
         }
         return jsonify(res_data), 200 
     except Exception as e:
+        logging.info('Error in arrow attach fn')
+        logging.info(e)
         update_route_field(route_id, 'processStatus', 'ARROW_ATTACHMENT_ERROR', env)
-        print('Error in arrow attach fn')
-        print(e)
         return "Error while processing json file", 500
 
 def arrowAttachJob(data, route_data):
@@ -729,12 +751,7 @@ def processRoute():
 logging.info(f'__name__ => {__name__}')
 
 if __name__ == '__main__':
-    try:
-        logging.info('Server starting ...')
-        app.run(host="0.0.0.0", port=5000, debug=True)
-        logging.info('Server started ...')
-    except Exception as e:
-        logging.info('Error while starting server')
-        logging.info(e)
+    logging.info('Starting development server...')
+    app.run(host="0.0.0.0", port=5000, debug=True)
 else:
     logging.info('not going in main')
