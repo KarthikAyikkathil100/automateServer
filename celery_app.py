@@ -9,7 +9,8 @@ from celery import Celery, signals
 
 # Celery app instance
 app = Celery('tasks')
-
+env_value = os.environ.get("STAGE", "staging")
+logging.info(f"Environment: {env_value}")
 # Configure Celery to use SQS as the broker
 app.conf.update(
     broker_url="sqs://",  
@@ -17,7 +18,7 @@ app.conf.update(
         "region": os.environ.get("AWS_DEFAULT_REGION"),
         "visibility_timeout": 9000
     },
-    task_default_queue="celery-test-queue", 
+    task_default_queue=f"RoutemeWayfinding-{env_value}-AutomationQueue", 
 
     task_default_max_retries=0,
 
