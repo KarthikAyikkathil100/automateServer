@@ -1,17 +1,14 @@
 import os
-from tkinter.constants import S
+
 import uuid
 import subprocess
-import threading
-from datetime import datetime
-from flask import Flask, request, jsonify
-from flask.cli import F
-from animation_gif_helpers import generate_colored_animations, manage_colored_gifs, upload_colored_gifs
+
+from flask import  jsonify
+from animation_gif_helpers import manage_colored_gifs
 from blur_automate import blurVideo
 from direction_detection import directionDetection
-from botocore.exceptions import ClientError
-from helpers import download_file_from_s3, get_route_data, get_video_duration, update_record, upload_video_to_s3, store_detected_directions, update_route_field, check_multiple_objects, update_automation_time, download_multiple_files, get_location_data, get_record, batch_get_items, get_current_time
-from arrow_attachment import arrow_attachment_main
+from helpers import download_file_from_s3, get_video_duration, update_record, upload_video_to_s3, update_route_field, check_multiple_objects, update_automation_time, download_multiple_files, get_location_data, get_record, batch_get_items, get_current_time
+
 from arrow_animations import animate_arrow_gifs
 from diy_segment_helpers import join_vids
 from text_blur import text_blur_main
@@ -22,12 +19,11 @@ import copy
 from constants import Tables, S3_PATHS, Media_Basics, PROCESS_STATUS, ROUTE_ACTION_STATUS
 import time
 import psutil
-
+from celery_app import app
 
 
 bucket_name = 'media.rtme.us'
-app = Flask(__name__)
-logging.info('Inside the server')
+
 
 def monitor_system(interval=5):
     psutil.cpu_percent()
@@ -45,8 +41,8 @@ def monitor_system(interval=5):
 
 
 # Start monitoring in background
-monitor_thread = threading.Thread(target=monitor_system, args=(5,), daemon=True)
-monitor_thread.start()
+# monitor_thread = threading.Thread(target=monitor_system, args=(5,), daemon=True)
+# monitor_thread.start()
 
 
 old_arrow_path = 'old_arrows/'
@@ -101,8 +97,9 @@ def manageColoredArrows(location_color_hex, env='dev'):
         raise Exception('Arrow color error')
 
 
-@app.route('/arrow-attach', methods=['POST'])
-def arrowAttachAPI():
+
+@app.task()
+def arrowAttachAPI(data):
     file_name = None
     route_id = None
     env = 'dev'
@@ -120,7 +117,6 @@ def arrowAttachAPI():
     is_diy_route_req = False
     is_diy_segment_req = False
     try:
-        data = request.get_json()
         if data['env'] != None:
             env = data['env']
         route_id = data['route_id']
@@ -162,13 +158,8 @@ def arrowAttachAPI():
 
         if route_data == None:
             raise Exception('Route not found')
-        thread = threading.Thread(target=arrowAttachJob, args=(data, route_data))
-        thread.daemon = True  # This ensures the thread will be killed when the main program exits
-        thread.start()
-        res_data = {
-            "message": "Route submitted for arrow-attach process"
-        }
-        return jsonify(res_data), 200 
+        arrowAttachJob(data, route_data)
+        return
     except Exception as e:
         logging.info('Error in arrow attach fn')
         logging.info(e)
@@ -188,7 +179,7 @@ def arrowAttachAPI():
         except Exception as e:
             logging.info('Error while updating route in DB')
             logging.info(e)
-        return "Error while processing Arrow animation", 500
+        raise Exception("Error while processing Arrow animation") 
 
 def arrowAttachJob(data, route_data):
     route_id = None
@@ -395,8 +386,8 @@ def arrowAttachJob(data, route_data):
                     print(e)
     
 
-@app.route('/test/text-blur', methods=['POST'])
-def testTextBlur():
+@app.task()
+def textBlurAPI(data):
     file_name = None
     route_id = None
     env = 'dev'
@@ -414,7 +405,6 @@ def testTextBlur():
     is_diy_route_req = False
     is_diy_segment_req = False
     try:
-        data = request.get_json()
         if data['env'] != None:
             env = data['env']
         route_id = data['route_id']
@@ -457,19 +447,14 @@ def testTextBlur():
         if update_db_success == False:
             raise Exception('Error while updating route in DB')
 
-        thread = threading.Thread(target=textBlurJob, args=(data, route_data))
-        thread.daemon = True  # This ensures the thread will be killed when the main program exits
-        thread.start()
-        res_data = {
-            "message": "Route submitted for text-blur process"
-        }
-        return jsonify(res_data), 200 
+        textBlurJob(data, route_data)
+        return 
     except Exception as e:
         update_route_field(route_id, 'processStatus', 'TEXT_BLUR_ERROR', env)
         update_automation_time(route_id, env)
         print('Error in text blur')
         print(e)
-        return "Error while processing json file", 500
+        raise Exception("Error while processing json file for text blur")
 
 
 
@@ -593,9 +578,9 @@ def textBlurJob(data, route_data):
         return "Error while processing json file", 500
 
 
-@app.route('/check-health')
-def cpuCheck():
-    return "[Updated again 12] Server says hii", 200
+# @app.route('/check-health')
+# def cpuCheck():
+#     return "[Updated again 12] Server says hii", 200
     # avg_cpu = get_average_cpu_utilization(interval=1, times=2)
     # logging.info(f'Average CPU => {avg_cpu}')
     # if avg_cpu > 80:
@@ -603,10 +588,9 @@ def cpuCheck():
     # else:    
     #     return "", 200
 
-@app.route('/face-blur', methods = ['POST'])
-def faceBlurAPI():
+@app.task()
+def faceBlurAPI(data):
     route_id = None
-    data = request.get_json()
     env = 'dev'
     diy_route_key = {
         'stationId': None,
@@ -646,25 +630,17 @@ def faceBlurAPI():
             env
         )
         if route_data == None:
-            data = {
-                "message": "Route not found"
-            }
-            return jsonify(data), 404
+            raise Exception('Route not found')
         
-        thread = threading.Thread(target=faceBlurJob, args=(data, route_data))
-        thread.daemon = True  # This ensures the thread will be killed when the main program exits
-        thread.start()
-        res_data = {
-            "message": "Route submitted for text-blur process"
-        }
-        return jsonify(res_data), 200 
+        faceBlurJob(data, route_data)
+        return
     except Exception as e:
         print('Error in face blur')
         print(e)
         # TODO: update here
-        # update_route_field(route_id, 'processStatus', 'FACE_BLUR_ERROR', env)
+        update_route_field(route_id, 'processStatus', 'FACE_BLUR_ERROR', env)
         # update_automation_time(route_id, env)
-        return "Error while processing json file", 500
+        raise Exception("Error while processing face blur")
 
 
 
@@ -791,10 +767,9 @@ def faceBlurJob(data, route_data):
         except Exception as e:
             print('Error while removing blurred file from local')
 
-@app.route('/create-route', methods = ['POST'])
-def createRouteAPI():
+@app.task()
+def createRouteAPI(data):
     route_id = None
-    data = request.get_json()
     env = 'dev'
     diy_route_key = {
         'stationId': None,
@@ -812,16 +787,10 @@ def createRouteAPI():
         
         route_data = get_record(Tables.DIY_ROUTES, diy_route_key, ['stationId', 'id', 'status', 'segmentIds'], env)
         if route_data == None:
-            data = {
-                "message": "Route not found"
-            }
-            return jsonify(data), 404
+            raise Exception('Route not found')
 
         if (route_data.get('status', None) != 'SUBMITTED'):
-            data = {
-                "message": "Route not submitted"
-            }
-            return jsonify(data), 404
+            raise Exception('Route not submitted')
 
         update_record(Tables.DIY_ROUTES, diy_route_key, {'processStatus': 'ROUTE_CREATION_START'}, env)
         update_automation_time(route_id, env)
@@ -837,14 +806,9 @@ def createRouteAPI():
         
         new_id = str(uuid.uuid4())
 
-        thread = threading.Thread(target=createRouteJob, args=(diy_route_key, video_urls, new_id, env))
-        thread.daemon = True  # This ensures the thread will be killed when the main program exits
-        thread.start()
+        createRouteJob(diy_route_key, video_urls, new_id, env)
         
-        res_data = {
-            "message": "Route submitted for creation process"
-        }
-        return jsonify(res_data), 200 
+        return
     except Exception as e:
         print('Error in create route API')
         print(e)
@@ -852,7 +816,7 @@ def createRouteAPI():
             update_record(Tables.DIY_ROUTES, diy_route_key, {'processStatus': 'ROUTE_CREATION_ERROR'}, env)
         except Exception as e:
             print("Error while updating route status")
-        return "Error while processing request", 500
+        raise Exception("Error while processing request")
     finally:
         # Remove the file from local storage
         try:
@@ -891,11 +855,10 @@ def createRouteJob(diy_route_key, video_urls, new_id, env = 'dev'):
 
 
 
-@app.route('/direction-detection', methods = ['POST'])
-def directionDetectionAPI():
+@app.task()
+def directionDetectionAPI(data):
     route_id = None
     env = 'dev'
-    data = request.get_json()
     diy_route_key = {
         'stationId': None,
         'id': None
@@ -937,13 +900,8 @@ def directionDetectionAPI():
         if route_data == None:
             raise Exception('Route not found')
 
-        thread = threading.Thread(target=directionDetectionJob, args=(data, route_data))
-        thread.daemon = True  # This ensures the thread will be killed when the main program exits
-        thread.start()
-        res_data = {
-            "message": "Route submitted for direction-detection process"
-        }
-        return jsonify(res_data), 200 
+        directionDetectionJob(data, route_data)
+        return
     except Exception as e:
         print('Error in direction detection')
         print(e)
@@ -963,7 +921,7 @@ def directionDetectionAPI():
         except Exception as e:
             print('Error while updating route in DB')
             print(e)
-        return "Error while processing direction detection", 500
+        raise Exception("Error while processing direction detection")
 
 def directionDetectionJob(data, route_data):
     route_id = None
@@ -1070,171 +1028,3 @@ def directionDetectionJob(data, route_data):
             print('Error while removing blurred file from local')
 
 
-# The expected body of the request
-# {'route_id': '', 'blur': '', 'direction_detect': True/False, 'arrow_attachment': True/False, 'file_name': ''}
-# TODO: Add Validation here
-# @app.route('/process-routes', methods = ['POST'])
-def processRouteAPI():
-    route_id = None
-    env = 'dev'
-    try:
-        data = request.get_json()
-        if data['env'] != None:
-            env = data['env']
-        route_id = data['route_id']
-        blur = data.get('blur')
-        # file_name = data['file_name']
-        direction_detect = data.get('direction_detect')
-        arrow_attachment = data.get('arrow_attachment')
-
-        if blur == True:
-            # Need to run blur script, direction detection script and submit to route DB
-            # 1) Download the video from s3 and save in local
-            logging.info('Blurring start')
-            route_data = get_route_data(route_id, env)
-            if route_data == None:
-                logging.info('Route not found')
-                res_dat = {
-                    'error': True,
-                    'message': 'Route not found'
-                }
-                return jsonify(res_dat), 404
-            video_url = route_data['videoURL']
-            file_name = video_url.split('/')[-1]
-            download_file_from_s3(bucket_name, f'{file_name}', f'inputs/{file_name}')
-
-            # 2) Blur the video
-            blurSuccess = blurVideo(file_name)
-            logging.info('blur complete')
-
-            # 3) Upload blurred video to S3
-            upload_video_to_s3(f'blurred/{file_name}', bucket_name, None, env)
-
-            # 4) Remove file from local
-            os.remove(f'blurred/{file_name}')
-        elif direction_detect == True:
-            # Get directions from route DB, use arrow attachment script
-            route_data = get_route_data(route_id, env)
-            if route_data == None:
-                logging.info('Route not found')
-                res_dat = {
-                    'error': True,
-                    'message': 'Route not found'
-                }
-                return jsonify(res_dat), 404
-            video_url = route_data['videoURL']
-            file_name = video_url.split('/')[-1]
-            download_file_from_s3(bucket_name, f'{file_name}', f'blurred/{file_name}')
-            logging.info('Starting the direction detection')
-            final_directions = directionDetection(file_name)
-            # Store these directions in dynamo table
-            store_detected_directions(final_directions, route_id, env)
-            logging.info('Done :+1')
-        elif arrow_attachment == True:
-            logging.info('Arrow attachment part')
-            route_data = get_route_data(route_id, env)
-            if route_data == None:
-                logging.info('Route not found')
-                res_dat = {
-                    'error': True,
-                    'message': 'Route not found'
-                }
-                return jsonify(res_dat), 404
-            video_url = route_data['videoURL']
-            file_name = video_url.split('/')[-1]
-            logging.info('download of video started')
-            download_file_from_s3(bucket_name, f'{file_name}', f'blurred/{file_name}')
-            logging.info('download done')
-            final_directions = route_data.get('detectedDirections')
-            logging.info('got directions')
-            if final_directions == None:
-                logging.info('no directions found')
-                res_dat = {
-                    'error': True,
-                    'message': 'Direction data not found'
-                }
-                return jsonify(res_dat), 404    
-            logging.info('Arrow attachment start')
-            arrow_attachment_main(file_name, final_directions)
-
-            # Change the video codec for making the video small in size
-            # ffmpeg -i input.mp4 -c:v libx264 -c:a copy output_h264.mp4
-            change_codec_command = ["ffmpeg", "-i", f'final/{file_name}', '-c:v', 'libx264', '-c:a', 'copy', f'final/codec_{file_name}']
-            result_dim = subprocess.run(change_codec_command, check=True, capture_output=True, text=True)
-            logging.info("Command Output codec:", result_dim.stdout)
-            logging.info("Command Error Output codec:", result_dim.stderr)
-
-            upload_video_to_s3(f'final/codec_{file_name}', bucket_name, file_name, env)
-            # upload_video_to_s3(f'final/codec_{file_name}', bucket_name)
-        else:
-            res_dat = {
-                'error': True,
-                'message': 'Route not found'
-            }
-            return jsonify(res_dat), 404
-        res_success = {
-                'error': False,
-                'message': 'Process completed successfully'
-            }
-        return jsonify(res_success), 200
-    except Exception as e:
-        logging.info('Error while processing route')
-        logging.info(e)
-        logging.info(f'Error while processing route => {route_id}')
-        try:
-            update_route_field(route_id, 'videoProcessError', True, env)
-        except Exception as e: 
-            logging.info('Error while updating DB about the video process error')
-        res_dat = {
-            'error': True,
-            'message': 'Error while processing'
-        }
-        return jsonify(res_dat), 500
-
-
-def processRoute():
-    try:
-        route_id = data['route_id']
-        blur = data['blur']
-        file_name = data['file_name']
-        direction_detect = data['direction_detect']
-        arrow_attachment = data['arrow_attachment']
-
-        if blur == True:
-            # Need to run blur script, direction detection script and submit to route DB
-            # 1) Download the video from s3 and save in local
-            s3_err = download_file_from_s3(bucket_name, f'{file_name}', f'inputs/{file_name}')
-            if s3_success == False:
-                return False, 'Error while downloading route file'
-
-            # 2) Blur the video
-            blur_success = blurVideo(file_name)
-            if blur_success == False:
-                return False, 'Error while processing blur on video'
-            logging.info('blur complete')
-
-            # 4) Direction detection
-            logging.info('Direction automation start')
-            final_directions = directionDetection(file_name)
-
-            # 5) TODO: Save this direction route in Route DB
-        elif blur == False and arrow_attachment == True:
-            # Get directions from route DB, use arrow attachment script
-            route_data = get_route_data(route_id, env)
-            if route_data == None:
-                logging.info('Route not found')
-                return False, 'Route not found'
-    except Exception as e:
-        return None, 'Error while processing route'
-logging.info(f'__name__ => {__name__}')
-
-if __name__ == '__main__':
-    try:
-        logging.info('Server starting ...')
-        app.run(host="0.0.0.0", port=5000, debug=True)
-        logging.info('Server started ...')
-    except Exception as e:
-        logging.info('Error while starting server')
-        logging.info(e)
-else:
-    logging.info('not going in main')
