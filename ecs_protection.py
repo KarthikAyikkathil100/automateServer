@@ -35,19 +35,18 @@ def _get_task_info():
     return _cluster_name, _task_id
 
 
-def _update_protection(enable: bool):
+def _update_protection(enable: bool, expires_in_minutes: int = 120):
     global _protection_enabled
 
-    if enable == _protection_enabled:
-        return
-
     cluster, task_id = _get_task_info()
-
-    ecs.update_task_protection(
-        cluster=cluster,
-        tasks=[task_id],
-        protectionEnabled=enable
-    )
+    params = {
+        'cluster': cluster,
+        'tasks': [task_id],
+        'protectionEnabled': enable,
+    }
+    if enable == True:
+        params['expiresInMinutes'] = expires_in_minutes
+    ecs.update_task_protection(**params)
 
     _protection_enabled = enable
     print(f"[ECS] Protection set to {enable}")
@@ -56,8 +55,7 @@ def _update_protection(enable: bool):
 def increment():
     with lock:
         active_tasks.value += 1
-        if active_tasks.value == 1:
-            _update_protection(True)
+        _update_protection(True, 120)
 
 
 def decrement():
