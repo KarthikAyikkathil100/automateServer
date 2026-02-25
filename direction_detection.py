@@ -180,41 +180,48 @@ def directionDetection(file_name):
         start_time = datetime.now()
 
         cam = video.create_capture(fn)
-        fps = cam.get(cv2.CAP_PROP_FPS)
-        if fps == 0:
-            fps = 30  # Default to 30 if FPS is not defined
-
         total_frames = round(cam.get(cv2.CAP_PROP_FRAME_COUNT))
-        routeFramesParallelProcess = int(total_frames*0.1)
-        chunks = math.floor(total_frames/routeFramesParallelProcess) + 1 # Total frame segments which will be processed
-        frames_split_meta = getFrameSplits(chunks, total_frames, routeFramesParallelProcess)
-        input_tuple = []
-        i=3
-        for frame_meta in frames_split_meta:
-            start = frame_meta['startTime']
-            end = frame_meta['endTime']
-            input_tuple.append((start, end, fps, file_path))
-            i +=1
-        # logging.info(frames_split_meta)
-        # exit()
+        fps = cam.get(cv2.CAP_PROP_FPS)
+        if fps > 0:
+            duration = round(total_frames / fps)
 
-        # _ret, prev = cam.read()
-        # # prevgray = cv2.cvtColor(prev, cv2.COLOR_BGR2GRAY)
-        # show_hsv = False
-        # show_glitch = False
-        # cur_glitch = prev.copy()
-        # frame_count = 0
+        logging.info(f'Video duration => {duration}')
+        logging.info(f'Video FPS => {fps}')
+    
+        results = process_vid_segment((1, duration, fps, file_path))
 
-        logging.info(f'Video fps => {fps}')
-        # process_pool.map(process_vid_segment, input_tuple)
-        results = list(process_pool.map(process_vid_segment, input_tuple))
+        # # -------------------- Parallel process part -------------------- 
+        # routeFramesParallelProcess = int(total_frames*0.1)
+        # chunks = math.floor(total_frames/routeFramesParallelProcess) + 1 # Total frame segments which will be processed
+        # frames_split_meta = getFrameSplits(chunks, total_frames, routeFramesParallelProcess)
+        # input_tuple = []
+        # i=3
+        # for frame_meta in frames_split_meta:
+        #     start = frame_meta['startTime']
+        #     end = frame_meta['endTime']
+        #     input_tuple.append((start, end, fps, file_path))
+        #     i +=1
+
+        # # logging.info(frames_split_meta)
+        # # exit()
+
+        # # _ret, prev = cam.read()
+        # # # prevgray = cv2.cvtColor(prev, cv2.COLOR_BGR2GRAY)
+        # # show_hsv = False
+        # # show_glitch = False
+        # # cur_glitch = prev.copy()
+        # # frame_count = 0
+
+        # logging.info(f'Video fps => {fps}')
+        # # process_pool.map(process_vid_segment, input_tuple)
+        # results = list(process_pool.map(process_vid_segment, input_tuple))
+        # ------------------ Parallel process end --------------------
+
         # with open(f'multithreaded_ou/{file_name}.json', 'w') as json_file:
         #     json.dump(results, json_file, indent=4)
 
-        
-        end_time = datetime.now()
 
-        finalOutput = sliding_window_main(results, file_name, fps, total_frames)
+        finalOutput = sliding_window_main(results.get("data", []), file_name, fps, total_frames)
         if finalOutput == None:
             return False
         else:
