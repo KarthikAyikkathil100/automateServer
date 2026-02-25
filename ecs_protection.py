@@ -1,3 +1,4 @@
+import logging
 import os
 import requests
 import boto3
@@ -49,7 +50,9 @@ def _update_protection(enable: bool, expires_in_minutes: int = 120):
     ecs.update_task_protection(**params)
 
     _protection_enabled = enable
-    print(f"[ECS] Protection set to {enable}")
+    logging.info(f"[ECS] Protection set to {enable}")
+    if enable == True:
+        logging.info(f"[ECS] Protection extended for {expires_in_minutes} minutes")
 
 
 def increment():
