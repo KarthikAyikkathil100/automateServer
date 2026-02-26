@@ -2,6 +2,8 @@ import boto3
 import logging
 logging.basicConfig(level=logging.INFO)
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Dict, Any, Optional
+from botocore.exceptions import ClientError
 import psutil
 import time
 import subprocess
@@ -436,3 +438,65 @@ def get_video_duration(path):
     )
     return float(result.stdout.strip())
 
+def create_record(
+    table_name: str,
+    part_key_name: Optional[str] = None,
+    part_key_value: Optional[Any] = None,
+    key_obj: Optional[Dict[str, Any]] = None,
+    attributes: Optional[Dict[str, Any]] = None,
+    ttl_seconds: Optional[int] = None,
+) -> bool:
+    """
+    Generic DynamoDB conditional create.
+
+    Usage modes:
+
+    1) Partition key only:
+       pass part_key_name + part_key_value
+
+    2) Partition + Sort key:
+       pass key_obj = {"pk": value, "sk": value}
+
+    Returns:
+        True  -> Record created
+        False -> Record already exists
+    """
+
+    if key_obj is None:
+        if not part_key_name:
+            raise ValueError("Either key_obj OR part_key_name must be provided")
+        key_obj = {part_key_name: part_key_value}
+
+    table = dynamodb.Table(table_name)
+    now = int(time.time())
+
+    item = {
+        **key_obj,
+        "createdAt": now,
+        "updatedAt": now,
+    }
+
+    if attributes:
+        item.update(attributes)
+
+    if ttl_seconds:
+        item["ttl"] = now + ttl_seconds  # must be epoch seconds
+
+    # Build condition expression dynamically
+    condition_parts = [
+        f"attribute_not_exists({key})" for key in key_obj.keys()
+    ]
+    condition_expression = " AND ".join(condition_parts)
+
+    try:
+        table.put_item(
+            Item=item,
+            ConditionExpression=condition_expression,
+        )
+        return True
+
+    except ClientError as e:
+        if e.response["Error"]["Code"] == "ConditionalCheckFailedException":
+            return False
+        else:
+            raise

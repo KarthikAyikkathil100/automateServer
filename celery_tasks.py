@@ -7,7 +7,7 @@ from flask import  jsonify
 from animation_gif_helpers import manage_colored_gifs
 from blur_automate import blurVideo
 from direction_detection import directionDetection
-from helpers import download_file_from_s3, get_video_duration, update_record, upload_video_to_s3, update_route_field, check_multiple_objects, update_automation_time, download_multiple_files, get_location_data, get_record, batch_get_items, get_current_time
+from helpers import create_record, download_file_from_s3, get_video_duration, update_record, upload_video_to_s3, update_route_field, check_multiple_objects, update_automation_time, download_multiple_files, get_location_data, get_record, batch_get_items, get_current_time
 
 from arrow_animations import animate_arrow_gifs
 from diy_segment_helpers import join_vids
@@ -119,6 +119,27 @@ def arrowAttachAPI(data):
     try:
         if data['env'] != None:
             env = data['env']
+
+        # ---- Idempotency check ---- 
+        idempotency_key = data.get('idempotency_key', None)   
+        if idempotency_key == None:
+            logging.info('Idempotency key not found')
+            return
+        create_success = create_record(
+            table_name=f'{env}-{Tables.IDEMPOTENCY_KEYS}',
+            part_key_name="id",
+            part_key_value=idempotency_key,
+            attributes={"createdAt": get_current_time()},
+            ttl_seconds=86400, # 24 hrs
+        )
+
+        if create_success == False:
+            # duplicate request
+            logging.info('Duplicate request')
+            return
+        # ---- End Idempotency check ---- 
+            
+
         route_id = data['route_id']
 
         if data.get('is_diy_route_req', False) == True:
@@ -422,6 +443,25 @@ def textBlurAPI(data):
         else:
             route_key['id'] = route_id
         
+        # ---- Idempotency check ---- 
+        idempotency_key = data.get('idempotency_key', None)   
+        if idempotency_key == None:
+            logging.info('Idempotency key not found')
+            return
+        create_success = create_record(
+            table_name=f'{env}-{Tables.IDEMPOTENCY_KEYS}',
+            part_key_name="id",
+            part_key_value=idempotency_key,
+            attributes={"createdAt": get_current_time()},
+            ttl_seconds=86400, # 24 hrs
+        )
+
+        if create_success == False:
+            # duplicate request
+            logging.info('Duplicate request')
+            return
+        # ---- End Idempotency check ---- 
+        
         req_attributes = ['textBlurJsonFileName', 'videoURL']
         route_data = get_record(
             Tables.DIY_ROUTES if is_diy_route_req == True else Tables.DIY_SEGMENTS if is_diy_segment_req == True else Tables.ROUTES, 
@@ -623,6 +663,25 @@ def faceBlurAPI(data):
         else:
             route_key['id'] = route_id
 
+        # ---- Idempotency check ---- 
+        idempotency_key = data.get('idempotency_key', None)   
+        if idempotency_key == None:
+            logging.info('Idempotency key not found')
+            return
+        create_success = create_record(
+            table_name=f'{env}-{Tables.IDEMPOTENCY_KEYS}',
+            part_key_name="id",
+            part_key_value=idempotency_key,
+            attributes={"createdAt": get_current_time()},
+            ttl_seconds=86400, # 24 hrs
+        )
+
+        if create_success == False:
+            # duplicate request
+            logging.info('Duplicate request')
+            return
+        # ---- End Idempotency check ---- 
+
         route_data = get_record(
             Tables.DIY_ROUTES if is_diy_route_req == True else Tables.DIY_SEGMENTS if is_diy_segment_req == True else Tables.ROUTES, 
             diy_route_key if is_diy_route_req == True else diy_segment_key if is_diy_segment_req == True else route_key, 
@@ -783,6 +842,26 @@ def createRouteAPI(data):
         [station_id, diy_route_id] = route_id.split('#')
         diy_route_key['stationId'] = station_id
         diy_route_key['id'] = diy_route_id
+
+
+        # ---- Idempotency check ---- 
+        idempotency_key = data.get('idempotency_key', None)   
+        if idempotency_key == None:
+            logging.info('Idempotency key not found')
+            return
+        create_success = create_record(
+            table_name=f'{env}-{Tables.IDEMPOTENCY_KEYS}',
+            part_key_name="id",
+            part_key_value=idempotency_key,
+            attributes={"createdAt": get_current_time()},
+            ttl_seconds=86400, # 24 hrs
+        )
+
+        if create_success == False:
+            # duplicate request
+            logging.info('Duplicate request')
+            return
+        # ---- End Idempotency check ---- 
         
         
         route_data = get_record(Tables.DIY_ROUTES, diy_route_key, ['stationId', 'id', 'status', 'segmentIds'], env)
@@ -889,6 +968,26 @@ def directionDetectionAPI(data):
             diy_segment_key['id'] = splits[1]
         else:
             route_key['id'] = route_id
+
+
+        # ---- Idempotency check ---- 
+        idempotency_key = data.get('idempotency_key', None)   
+        if idempotency_key == None:
+            logging.info('Idempotency key not found')
+            return
+        create_success = create_record(
+            table_name=f'{env}-{Tables.IDEMPOTENCY_KEYS}',
+            part_key_name="id",
+            part_key_value=idempotency_key,
+            attributes={"createdAt": get_current_time()},
+            ttl_seconds=86400, # 24 hrs
+        )
+
+        if create_success == False:
+            # duplicate request
+            logging.info('Duplicate request')
+            return
+        # ---- End Idempotency check ---- 
 
         route_data = get_record(
             Tables.DIY_ROUTES if is_diy_route_req == True else Tables.DIY_SEGMENTS if is_diy_segment_req == True else Tables.ROUTES, 

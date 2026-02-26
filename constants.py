@@ -5,6 +5,7 @@ class Tables:
     ROUTES: str = 'Routes'
     DIY_ROUTES: str = 'DiyRoutes'
     DIY_SEGMENTS: str = 'DiySegments'
+    IDEMPOTENCY_KEYS: str = 'IdempotencyKeys'
 
 @dataclass(frozen=True)
 class S3_PATHS:
