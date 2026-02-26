@@ -129,7 +129,6 @@ def arrowAttachAPI(data):
             table_name=f'{env}-{Tables.IDEMPOTENCY_KEYS}',
             part_key_name="id",
             part_key_value=idempotency_key,
-            attributes={"createdAt": get_current_time()},
             ttl_seconds=86400, # 24 hrs
         )
 
@@ -452,7 +451,6 @@ def textBlurAPI(data):
             table_name=f'{env}-{Tables.IDEMPOTENCY_KEYS}',
             part_key_name="id",
             part_key_value=idempotency_key,
-            attributes={"createdAt": get_current_time()},
             ttl_seconds=86400, # 24 hrs
         )
 
@@ -672,7 +670,6 @@ def faceBlurAPI(data):
             table_name=f'{env}-{Tables.IDEMPOTENCY_KEYS}',
             part_key_name="id",
             part_key_value=idempotency_key,
-            attributes={"createdAt": get_current_time()},
             ttl_seconds=86400, # 24 hrs
         )
 
@@ -853,7 +850,6 @@ def createRouteAPI(data):
             table_name=f'{env}-{Tables.IDEMPOTENCY_KEYS}',
             part_key_name="id",
             part_key_value=idempotency_key,
-            attributes={"createdAt": get_current_time()},
             ttl_seconds=86400, # 24 hrs
         )
 
@@ -979,7 +975,6 @@ def directionDetectionAPI(data):
             table_name=f'{env}-{Tables.IDEMPOTENCY_KEYS}',
             part_key_name="id",
             part_key_value=idempotency_key,
-            attributes={"createdAt": get_current_time()},
             ttl_seconds=86400, # 24 hrs
         )
 
