@@ -1,6 +1,5 @@
-import json
+from copy import copy
 from typing import List, Dict, Any
-import os
 import random
 
 
@@ -149,10 +148,7 @@ def sliding_window(data, fps):
 
 def sliding_window_main(master, file_name, fps, total_frames):
     try:
-        data = []
-        for item in master:
-            if item != None and len(item) > 0:
-                data.extend(item['data'])
+        data = copy(master)
         finalData = sliding_window(data, fps)
         # with open(f'multithread-res/{file_name}.txt', 'w', encoding='utf-8') as f:
         #     json.dump({'data': finalData}, f)

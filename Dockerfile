@@ -50,7 +50,8 @@ RUN pip install --no-cache-dir \
     boto3 \
     awscli \
     deface \
-    psutil
+    psutil \
+    "celery[sqs]"
 
 # Force MoviePy to use system ffmpeg
 ENV IMAGEIO_FFMPEG_EXE=/usr/bin/ffmpeg
@@ -62,7 +63,6 @@ ENV IMAGEIO_FFMPEG_EXE=/usr/bin/ffmpeg
 COPY video.py .
 COPY tst_scene_render.py .
 
-COPY app.py .
 COPY arrow_attachment.py .
 COPY direction_detection.py .
 COPY blur_automate.py .
@@ -76,11 +76,20 @@ COPY old_arrows/ ./old_arrows/
 COPY newGifs/ ./newGifs/
 COPY arrow_animations.py ./arrow_animations.py
 COPY animation_gif_helpers.py ./animation_gif_helpers.py
+COPY constants.py ./constants.py
+
+# Celery
+COPY celery_app.py ./celery_app.py
+COPY celery_tasks.py ./celery_tasks.py
+COPY ecs_protection.py ./ecs_protection.py
+
 # Verify the installation
 RUN aws --version
 
 # Expose the port the app runs on
 EXPOSE 5000
 
-ENTRYPOINT ["python", "app.py"]
+# ENTRYPOINT ["python", "app.py"]
+# Default command
+CMD ["celery", "-A", "celery_app", "worker", "--loglevel=info", "--concurrency=5", "--pool=prefork", "--prefetch-multiplier=1"]
 
