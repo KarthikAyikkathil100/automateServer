@@ -177,18 +177,14 @@ def directionDetection(file_name):
     fn = f'blurred/{file_name}'
     file_path = fn
     try:
-        start_time = datetime.now()
 
         cam = video.create_capture(fn)
         total_frames = round(cam.get(cv2.CAP_PROP_FRAME_COUNT))
         fps = cam.get(cv2.CAP_PROP_FPS)
-        if fps > 0:
-            duration = round(total_frames / fps)
-
-        logging.info(f'Video duration => {duration}')
+        
         logging.info(f'Video FPS => {fps}')
     
-        results = process_vid_segment((1, duration, fps, file_path))
+        results = process_vid_segment((1, total_frames, fps, file_path))
 
         # # -------------------- Parallel process part -------------------- 
         # routeFramesParallelProcess = int(total_frames*0.1)
