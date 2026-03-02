@@ -3,7 +3,6 @@ import os
 import uuid
 import subprocess
 
-from flask import  jsonify
 from animation_gif_helpers import manage_colored_gifs
 from blur_automate import blurVideo
 from direction_detection import directionDetection
@@ -199,7 +198,6 @@ def arrowAttachAPI(data):
         except Exception as e:
             logging.info('Error while updating route in DB')
             logging.info(e)
-        raise Exception("Error while processing Arrow animation") 
 
 def arrowAttachJob(data, route_data):
     route_id = None
@@ -383,15 +381,18 @@ def arrowAttachJob(data, route_data):
             print(e)
     finally:
         try:
-            os.remove(f'blurred/{file_name}')
+            if file_name != None:
+                os.remove(f'blurred/{file_name}')
         except Exception as e:
             print('Error removing file')
         try:
-            os.remove(f'final/{file_name}')
+            if file_name != None:
+                os.remove(f'final/{file_name}')
         except Exception as e:
             print('Error removing file')
         try:
-            os.remove(f'final/codec_{file_name}')
+            if file_name != None:
+                os.remove(f'final/codec_{file_name}')
         except Exception as e:
             print('Error removing file')
 
@@ -400,8 +401,8 @@ def arrowAttachJob(data, route_data):
             colored_gif_files = os.listdir(gif_path)
             for file in colored_gif_files:
                 try:
-                    file_name = f'{route_id}-{hex_color}-{file}'
-                    os.remove(f'{colored_gif_path}{file_name}')
+                    colored_file_name = f'{route_id}-{hex_color}-{file}'
+                    os.remove(f'{colored_gif_path}{colored_file_name}')
                 except Exception as e:
                     print(e)
     
@@ -468,10 +469,7 @@ def textBlurAPI(data):
             env
         )
         if route_data == None:
-            data = {
-                "message": "Route not found"
-            }
-            return jsonify(data), 404 
+            raise Exception('Route not found')
 
         update_db_success = update_record(
             Tables.DIY_ROUTES if is_diy_route_req == True else Tables.DIY_SEGMENTS if is_diy_segment_req == True else Tables.ROUTES, 
@@ -488,17 +486,21 @@ def textBlurAPI(data):
         textBlurJob(data, route_data)
         return 
     except Exception as e:
-        update_route_field(route_id, 'processStatus', 'TEXT_BLUR_ERROR', env)
-        update_automation_time(route_id, env)
+        try:
+            update_route_field(route_id, 'processStatus', 'TEXT_BLUR_ERROR', env)
+            update_automation_time(route_id, env)
+        except Exception as e:
+            print('Error while updating route in DB')
+            print(e)
         print('Error in text blur')
         print(e)
-        raise Exception("Error while processing json file for text blur")
 
 
 
 def textBlurJob(data, route_data):
     route_id = None
     file_name = None
+    json_file_name = None
     env = 'dev'
     hex_color = None
     diy_route_key = {
@@ -580,9 +582,6 @@ def textBlurJob(data, route_data):
             )
             if db_update_success == False:
                raise Exception('DB update failed')
-            # Remove file from local
-            os.remove(f'final/{file_name}')
-            os.remove(f'final/codec_{file_name}')
             update_db_success = update_record(
                 Tables.DIY_ROUTES if is_diy_route_req == True else Tables.DIY_SEGMENTS if is_diy_segment_req == True else Tables.ROUTES, 
                 diy_route_key if is_diy_route_req == True else diy_segment_key if is_diy_segment_req == True else route_key, 
@@ -592,7 +591,7 @@ def textBlurJob(data, route_data):
                 }, 
                 env
             )
-            if db_update_success == False:
+            if update_db_success == False:
                 raise Exception('DB update failed')
             return
     except Exception as e:
@@ -606,7 +605,7 @@ def textBlurJob(data, route_data):
                 }, 
                 env
             )
-            if db_update_success == False:
+            if update_db_success == False:
                 raise Exception('DB update failed')
         except Exception as e:
             print('Error while updating route in DB')
@@ -614,6 +613,27 @@ def textBlurJob(data, route_data):
         print('Error in text blur')
         print(e)
         return "Error while processing json file", 500
+    finally:
+        try:
+            if file_name != None:
+                os.remove(f'inputs/{file_name}')
+        except Exception as e:
+            print('Error while removing input file from local')
+        try:
+            if json_file_name != None:
+                os.remove(f'text_json/{json_file_name}')
+        except Exception as e:
+            print('Error while removing text json file from local')
+        try:
+            if file_name != None:
+                os.remove(f'final/{file_name}')
+        except Exception as e:
+            print('Error while removing final file from local')
+        try:
+            if file_name != None:
+                os.remove(f'final/codec_{file_name}')
+        except Exception as e:
+            print('Error while removing codec file from local')
 
 
 # @app.route('/check-health')
@@ -694,9 +714,11 @@ def faceBlurAPI(data):
         print('Error in face blur')
         print(e)
         # TODO: update here
-        update_route_field(route_id, 'processStatus', 'FACE_BLUR_ERROR', env)
-        # update_automation_time(route_id, env)
-        raise Exception("Error while processing face blur")
+        try:
+            update_route_field(route_id, 'processStatus', 'FACE_BLUR_ERROR', env)
+        except Exception as e:
+            print('Error while updating route in DB')
+            print(e)
 
 
 
@@ -804,22 +826,32 @@ def faceBlurJob(data, route_data):
         if update_field_success == False:
             raise Exception('Update DB failed')
     except Exception as e:
-        update_field_success = False
-        update_field_success = update_record(
-            Tables.DIY_ROUTES if is_diy_route_req == True else Tables.DIY_SEGMENTS if is_diy_segment_req == True else Tables.ROUTES, 
-            diy_route_key if is_diy_route_req == True else diy_segment_key if is_diy_segment_req == True else route_key, 
-            {
-                'processStatus': PROCESS_STATUS.FACE_BLUR_ERROR, 
-                'automationUpdateAt': get_current_time()
-            }, 
-            env
-        )
-        if update_field_success == False:
-            print('Update DB failed')
+        try:
+            update_field_success = False
+            update_field_success = update_record(
+                Tables.DIY_ROUTES if is_diy_route_req == True else Tables.DIY_SEGMENTS if is_diy_segment_req == True else Tables.ROUTES, 
+                diy_route_key if is_diy_route_req == True else diy_segment_key if is_diy_segment_req == True else route_key, 
+                {
+                    'processStatus': PROCESS_STATUS.FACE_BLUR_ERROR, 
+                    'automationUpdateAt': get_current_time()
+                }, 
+                env
+            )
+            if update_field_success == False:
+                print('Update DB failed')
+        except Exception as e:
+            print('Error while updating route in DB')
+            print(e)
         print(e)
     finally:
         try:
-            os.remove(f'blurred/{file_name}')
+            if file_name != None:
+                os.remove(f'inputs/{file_name}')
+        except Exception as e:
+            print('Error while removing input file from local')
+        try:
+            if file_name != None:
+                os.remove(f'blurred/{file_name}')
         except Exception as e:
             print('Error while removing blurred file from local')
 
@@ -891,15 +923,16 @@ def createRouteAPI(data):
             update_record(Tables.DIY_ROUTES, diy_route_key, {'processStatus': 'ROUTE_CREATION_ERROR'}, env)
         except Exception as e:
             print("Error while updating route status")
-        raise Exception("Error while processing request")
     finally:
         # Remove the file from local storage
         try:
-            os.remove(f'final/{local_file_name}')
+            if local_file_name != None:
+                os.remove(f'final/{local_file_name}')
         except Exception as e:
             print("Error while removing file from local storage")
 
 def createRouteJob(diy_route_key, video_urls, new_id, env = 'dev'):
+    local_file_name = None
     try:
         local_file_name = f'{new_id}.mp4'
 
@@ -927,6 +960,12 @@ def createRouteJob(diy_route_key, video_urls, new_id, env = 'dev'):
         except Exception as e:
             print("Error while updating route status")
         return "Error while processing request", 500
+    finally:
+        try:
+            if local_file_name != None:
+                os.remove(f'final/{local_file_name}')
+        except Exception as e:
+            print("Error while removing file from local storage")
 
 
 
@@ -1015,7 +1054,6 @@ def directionDetectionAPI(data):
         except Exception as e:
             print('Error while updating route in DB')
             print(e)
-        raise Exception("Error while processing direction detection")
 
 def directionDetectionJob(data, route_data):
     route_id = None
@@ -1052,7 +1090,6 @@ def directionDetectionJob(data, route_data):
             diy_segment_key['id'] = splits[1]
         else:
             route_key['id'] = route_id
-
         update_db_success = update_record(
             Tables.DIY_ROUTES if is_diy_route_req == True else Tables.DIY_SEGMENTS if is_diy_segment_req == True else Tables.ROUTES, 
             diy_route_key if is_diy_route_req == True else diy_segment_key if is_diy_segment_req == True else route_key, 
@@ -1117,8 +1154,7 @@ def directionDetectionJob(data, route_data):
         print(e)
     finally:
         try:
-            os.remove(f'blurred/{file_name}')
+            if file_name != None:
+                os.remove(f'blurred/{file_name}')
         except Exception as e:
             print('Error while removing blurred file from local')
-
-
