@@ -469,9 +469,10 @@ def faceBlurJob(data, route_data):
         # 3) Upload blurred video to S3
         update_field_success = upload_video_to_s3(f'blurred/{file_name}', bucket_name, None, env)
         if update_field_success == False:
+            raise Exception('S3 upload failed')
+        update_field_success = update_route_field(route_id, 'processStatus', 'FACE_BLUR_SUCCESS', env)
+        if update_field_success == False:
             raise Exception('Update DB failed')
-
-        update_route_field(route_id, 'processStatus', 'FACE_BLUR_SUCCESS', env)
         update_automation_time(route_id, env)
     except Exception as e:
         update_route_field(route_id, 'processStatus', 'FACE_BLUR_ERROR', env)
