@@ -908,12 +908,15 @@ def createRouteAPI(data):
             [location_id, id] = segmentId.split('#')
             segment_keys.append({'locationId': location_id, 'id': id})
 
-        segment_data = batch_get_items(Tables.DIY_SEGMENTS, segment_keys, ['locationId', 'id', 'status', 'processedVideoLink'], env)
-        video_urls = [x.get('processedVideoLink', None) for x in segment_data]
+        segment_data = batch_get_items(Tables.DIY_SEGMENTS, segment_keys, ['locationId', 'id', 'status', 'processedVideoLink', 'videoURL'], env)
+        processed_video_urls = [x.get('processedVideoLink', None) for x in segment_data]
+        base_video_urls = [x.get('videoURL', None) for x in segment_data]
         
-        new_id = str(uuid.uuid4())
+        processed_vid_id = str(uuid.uuid4())
+        base_vid_id = str(uuid.uuid4())
 
-        createRouteJob(diy_route_key, video_urls, new_id, env)
+
+        createRouteJob(diy_route_key, processed_video_urls, base_video_urls, [processed_vid_id, base_vid_id], env)
         
         return
     except Exception as e:
@@ -931,25 +934,44 @@ def createRouteAPI(data):
         except Exception as e:
             print("Error while removing file from local storage")
 
-def createRouteJob(diy_route_key, video_urls, new_id, env = 'dev'):
+def createRouteJob(diy_route_key, processed_video_urls, base_video_urls, ids, env = 'dev'):
     local_file_name = None
+    base_local_file_name = None
     try:
-        local_file_name = f'{new_id}.mp4'
+        processed_vid_id = ids[0]
+        base_vid_id = None
+        if len(ids) > 1:
+            base_vid_id = ids[1]
+        local_file_name = f'{processed_vid_id}.mp4'
 
         # 1) Join the segments
-        join_vids(video_urls, f'final/{local_file_name}')
+        join_vids(processed_video_urls, f'final/{local_file_name}')
 
         # 2) Upload video to S3
         upload_success = upload_video_to_s3(f'final/{local_file_name}', bucket_name, None, env, S3_PATHS.DIY_ROUTES)
         if upload_success == False:
             raise Exception('Upload failed')
         
+        if base_vid_id != None and len(base_video_urls) > 0:
+            base_local_file_name = f'{base_vid_id}.mp4'
+            # 1) Join the segments
+            join_vids(base_video_urls, f'final/{base_local_file_name}')
+
+            # 2) Upload video to S3
+            upload_success = upload_video_to_s3(f'final/{base_local_file_name}', bucket_name, None, env, S3_PATHS.DIY_ROUTES)
+            if upload_success == False:
+                raise Exception('Upload failed')
+            
+        
         # 3) Update the route status
-        video_url = f'{Media_Basics.MediaUrlPrefix}/{env}/{S3_PATHS.DIY_ROUTES}/{new_id}.mp4'
+        video_url = f'{Media_Basics.MediaUrlPrefix}/{env}/{S3_PATHS.DIY_ROUTES}/{processed_vid_id}.mp4'
+        base_video_url = None
+        if base_vid_id != None and len(base_video_urls) > 0:
+            base_video_url = f'{Media_Basics.MediaUrlPrefix}/{env}/{S3_PATHS.DIY_ROUTES}/{base_vid_id}.mp4'
         update_record(
             Tables.DIY_ROUTES, 
             diy_route_key, 
-            {'processStatus': PROCESS_STATUS.ROUTE_CREATION_SUCCESS, 'videoURL': video_url, 'actionStatus': ROUTE_ACTION_STATUS.CREATED}, 
+            {'processStatus': PROCESS_STATUS.ROUTE_CREATION_SUCCESS, 'videoURL': base_video_url, 'actionStatus': ROUTE_ACTION_STATUS.CREATED, 'processedVideoLink': video_url   }, 
             env
         )
     except Exception as e:
@@ -962,8 +984,12 @@ def createRouteJob(diy_route_key, video_urls, new_id, env = 'dev'):
         return "Error while processing request", 500
     finally:
         try:
-            if local_file_name != None:
-                os.remove(f'final/{local_file_name}')
+            files_to_cleanup = [local_file_name, base_local_file_name]
+            for file_name in files_to_cleanup:
+                if file_name != None:
+                    file_path = f'final/{file_name}'
+                    if os.path.exists(file_path):
+                        os.remove(file_path)
         except Exception as e:
             print("Error while removing file from local storage")
 
