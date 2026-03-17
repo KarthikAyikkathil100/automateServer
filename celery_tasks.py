@@ -715,7 +715,18 @@ def faceBlurAPI(data):
         print(e)
         # TODO: update here
         try:
-            update_route_field(route_id, 'processStatus', 'FACE_BLUR_ERROR', env)
+            update_field_success = False
+            update_field_success = update_record(
+                Tables.DIY_ROUTES if is_diy_route_req == True else Tables.DIY_SEGMENTS if is_diy_segment_req == True else Tables.ROUTES, 
+                diy_route_key if is_diy_route_req == True else diy_segment_key if is_diy_segment_req == True else route_key, 
+                {
+                    'processStatus': PROCESS_STATUS.FACE_BLUR_ERROR, 
+                    'automationUpdateAt': get_current_time()
+                }, 
+                env
+            )
+            if update_field_success == False:
+                print('Update DB failed')
         except Exception as e:
             print('Error while updating route in DB')
             print(e)
