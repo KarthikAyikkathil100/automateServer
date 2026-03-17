@@ -10,6 +10,7 @@ class Tables:
 @dataclass(frozen=True)
 class S3_PATHS:
     ROUTES: str = 'routes'
+    SECURE_ROUTES: str = 'secure_routes'
     DIY_ROUTES: str = 'diy_routes'
     DIY_SEGMENTS: str = 'diy_segments'
 

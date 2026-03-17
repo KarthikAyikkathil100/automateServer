@@ -24,6 +24,22 @@ from celery_app import app
 bucket_name = 'media.rtme.us'
 
 
+def get_route_is_private(route_data, is_diy_route_req=False, is_diy_segment_req=False):
+    if is_diy_route_req == True or is_diy_segment_req == True:
+        return False
+    if isinstance(route_data, dict) == False:
+        return False
+    return route_data.get('isPrivate', False) == True
+
+
+def get_route_s3_path(route_data, is_diy_route_req=False, is_diy_segment_req=False):
+    if is_diy_route_req == True:
+        return S3_PATHS.DIY_ROUTES
+    if is_diy_segment_req == True:
+        return S3_PATHS.DIY_SEGMENTS
+    return S3_PATHS.SECURE_ROUTES if get_route_is_private(route_data) == True else S3_PATHS.ROUTES
+
+
 def monitor_system(interval=5):
     psutil.cpu_percent()
 
@@ -167,6 +183,7 @@ def arrowAttachAPI(data):
             req_attributes.append('newLanguageCaptions')
             req_attributes.append('showAnimationsChanged')
             req_attributes.append('reRunArrowAttach')
+            req_attributes.append('isPrivate')
 
         route_data = get_record(
             Tables.DIY_ROUTES if is_diy_route_req == True else Tables.DIY_SEGMENTS if is_diy_segment_req == True else Tables.ROUTES, 
@@ -275,10 +292,11 @@ def arrowAttachJob(data, route_data):
             raise Exception('Error while updating route in DB')
         video_url = route_data.get('videoURL')
         file_name = video_url.split('/')[-1]
+        route_s3_path = get_route_s3_path(route_data, is_diy_route_req, is_diy_segment_req)
         logging.info('download of video started')
         download_file_from_s3(
             bucket_name, 
-            f'{env}/{S3_PATHS.DIY_ROUTES if is_diy_route_req == True else S3_PATHS.DIY_SEGMENTS if is_diy_segment_req == True else S3_PATHS.ROUTES}/{file_name}', 
+            f'{env}/{route_s3_path}/{file_name}', 
             f'blurred/{file_name}'
         )
         logging.info('download done')
@@ -319,14 +337,14 @@ def arrowAttachJob(data, route_data):
         logging.info("Command Error Output codec:", result_dim.stderr)
 
         new_file_name = f'processed_{file_name}'
-        new_link = f'https://media.rtme.us/{env}/{S3_PATHS.DIY_ROUTES if is_diy_route_req == True else S3_PATHS.DIY_SEGMENTS if is_diy_segment_req == True else S3_PATHS.ROUTES}/{new_file_name}'
+        new_link = f'https://media.rtme.us/{env}/{route_s3_path}/{new_file_name}'
         db_update_success = False
         db_update_success = upload_video_to_s3(
             f'final/codec_{file_name}', 
             bucket_name, 
             new_file_name, 
             env, 
-            S3_PATHS.DIY_ROUTES if is_diy_route_req == True else S3_PATHS.DIY_SEGMENTS if is_diy_segment_req == True else S3_PATHS.ROUTES
+            route_s3_path
         )
         if db_update_success == False:
             raise Exception('DB update error')
@@ -462,10 +480,12 @@ def textBlurAPI(data):
         # ---- End Idempotency check ---- 
         
         req_attributes = ['textBlurJsonFileName', 'videoURL']
+        if is_diy_route_req == False and is_diy_segment_req == False:
+            req_attributes.append('isPrivate')
         route_data = get_record(
             Tables.DIY_ROUTES if is_diy_route_req == True else Tables.DIY_SEGMENTS if is_diy_segment_req == True else Tables.ROUTES, 
             diy_route_key if is_diy_route_req == True else diy_segment_key if is_diy_segment_req == True else route_key, 
-            req_attributes, 
+            req_attributes,
             env
         )
         if route_data == None:
@@ -549,7 +569,7 @@ def textBlurJob(data, route_data):
             print('Route Video not found')
         file_name = video_url.split('/')[-1]
         print('Started downloading the Video File to be processed')
-        download_s3_path = S3_PATHS.DIY_ROUTES if is_diy_route_req == True else S3_PATHS.DIY_SEGMENTS if is_diy_segment_req == True else S3_PATHS.ROUTES 
+        download_s3_path = get_route_s3_path(route_data, is_diy_route_req, is_diy_segment_req)
         db_update_success = download_file_from_s3(
             bucket_name, 
             f'{env}/{download_s3_path}/{file_name}', 
@@ -578,7 +598,7 @@ def textBlurJob(data, route_data):
                 bucket_name, 
                 file_name, 
                 env,
-                S3_PATHS.DIY_ROUTES if is_diy_route_req == True else S3_PATHS.DIY_SEGMENTS if is_diy_segment_req == True else S3_PATHS.ROUTES
+                download_s3_path
             )
             if db_update_success == False:
                raise Exception('DB update failed')
@@ -699,10 +719,13 @@ def faceBlurAPI(data):
             return
         # ---- End Idempotency check ---- 
 
+        req_attributes = ['videoURL']
+        if is_diy_route_req == False and is_diy_segment_req == False:
+            req_attributes.append('isPrivate')
         route_data = get_record(
             Tables.DIY_ROUTES if is_diy_route_req == True else Tables.DIY_SEGMENTS if is_diy_segment_req == True else Tables.ROUTES, 
             diy_route_key if is_diy_route_req == True else diy_segment_key if is_diy_segment_req == True else route_key, 
-            ['videoURL'], 
+            req_attributes,
             env
         )
         if route_data == None:
@@ -788,9 +811,10 @@ def faceBlurJob(data, route_data):
             raise Exception('Update DB failed')
         video_url = route_data['videoURL']
         file_name = video_url.split('/')[-1]
+        route_s3_path = get_route_s3_path(route_data, is_diy_route_req, is_diy_segment_req)
         download_success = download_file_from_s3(
             bucket_name, 
-            f'{env}/{S3_PATHS.DIY_ROUTES if is_diy_route_req == True else S3_PATHS.DIY_SEGMENTS if is_diy_segment_req == True else S3_PATHS.ROUTES}/{file_name}', 
+            f'{env}/{route_s3_path}/{file_name}', 
             f'inputs/{file_name}'
         )
         if download_success == False:
@@ -818,7 +842,7 @@ def faceBlurJob(data, route_data):
             bucket_name, 
             None, 
             env, 
-            S3_PATHS.DIY_ROUTES if is_diy_route_req == True else S3_PATHS.DIY_SEGMENTS if is_diy_segment_req == True else S3_PATHS.ROUTES
+            route_s3_path
         )
         if upload_success == False:
             raise Exception('Upload failed')
@@ -1060,10 +1084,13 @@ def directionDetectionAPI(data):
             return
         # ---- End Idempotency check ---- 
 
+        req_attributes = ['videoURL']
+        if is_diy_route_req == False and is_diy_segment_req == False:
+            req_attributes.append('isPrivate')
         route_data = get_record(
             Tables.DIY_ROUTES if is_diy_route_req == True else Tables.DIY_SEGMENTS if is_diy_segment_req == True else Tables.ROUTES, 
             diy_route_key if is_diy_route_req == True else diy_segment_key if is_diy_segment_req == True else route_key, 
-            ['videoURL'], 
+            req_attributes, 
             env
         )
 
@@ -1142,9 +1169,10 @@ def directionDetectionJob(data, route_data):
 
         video_url = route_data['videoURL']
         file_name = video_url.split('/')[-1]
+        route_s3_path = get_route_s3_path(route_data, is_diy_route_req, is_diy_segment_req)
         download_success = download_file_from_s3(
             bucket_name, 
-            f'{env}/{S3_PATHS.DIY_ROUTES if is_diy_route_req == True else S3_PATHS.DIY_SEGMENTS if is_diy_segment_req == True else S3_PATHS.ROUTES}/{file_name}', 
+            f'{env}/{route_s3_path}/{file_name}', 
             f'blurred/{file_name}'
         )
         if download_success == False:
