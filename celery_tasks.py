@@ -134,6 +134,22 @@ def arrowAttachAPI(data):
     try:
         if data['env'] != None:
             env = data['env']
+        route_id = data['route_id']
+
+        if data.get('is_diy_route_req', False) == True:
+            is_diy_route_req = True
+            splits = route_id.split('#')
+            diy_route_key['stationId'] = splits[0]
+            diy_route_key['id'] = splits[1]
+        elif data.get('is_diy_segment_req', False) == True:
+            is_diy_segment_req = True
+            splits = route_id.split('#')
+            diy_segment_key['locationId'] = splits[0]
+            diy_segment_key['id'] = splits[1]
+        else:
+            route_key['id'] = route_id
+
+        
 
         # ---- Idempotency check ---- 
         idempotency_key = data.get('idempotency_key', None)   
@@ -154,20 +170,6 @@ def arrowAttachAPI(data):
         # ---- End Idempotency check ---- 
             
 
-        route_id = data['route_id']
-
-        if data.get('is_diy_route_req', False) == True:
-            is_diy_route_req = True
-            splits = route_id.split('#')
-            diy_route_key['stationId'] = splits[0]
-            diy_route_key['id'] = splits[1]
-        elif data.get('is_diy_segment_req', False) == True:
-            is_diy_segment_req = True
-            splits = route_id.split('#')
-            diy_segment_key['locationId'] = splits[0]
-            diy_segment_key['id'] = splits[1]
-        else:
-            route_key['id'] = route_id
 
         req_attributes = [
             'videoURL',
