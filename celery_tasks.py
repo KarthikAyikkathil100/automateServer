@@ -929,7 +929,7 @@ def createRouteAPI(data):
         # ---- End Idempotency check ---- 
         
         
-        route_data = get_record(Tables.DIY_ROUTES, diy_route_key, ['stationId', 'id', 'status', 'segmentIds'], env)
+        route_data = get_record(Tables.DIY_ROUTES, diy_route_key, ['stationId', 'id', 'status', 'segmentIds', 'totalDuration'], env)
         if route_data == None:
             raise Exception('Route not found')
 
@@ -983,6 +983,11 @@ def createRouteJob(diy_route_key, processed_video_urls, base_video_urls, ids, en
 
         # 1) Join the segments
         join_vids(processed_video_urls, f'final/{local_file_name}')
+        video_duration = get_video_duration(f'final/{local_file_name}')
+        if video_duration != None:
+            video_duration = int(video_duration)
+                
+        
 
         # 2) Upload video to S3
         upload_success = upload_video_to_s3(f'final/{local_file_name}', bucket_name, None, env, S3_PATHS.DIY_ROUTES)
@@ -1005,10 +1010,18 @@ def createRouteJob(diy_route_key, processed_video_urls, base_video_urls, ids, en
         base_video_url = None
         if base_vid_id != None and len(base_video_urls) > 0:
             base_video_url = f'{Media_Basics.MediaUrlPrefix}/{env}/{S3_PATHS.DIY_ROUTES}/{base_vid_id}.mp4'
+        
+        to_update = {
+            'processStatus': PROCESS_STATUS.ROUTE_CREATION_SUCCESS, 
+            'videoURL': base_video_url, 
+            'actionStatus': ROUTE_ACTION_STATUS.CREATED, 
+            'processedVideoLink': video_url, 
+            'totalDuration': video_duration   
+        }
         update_record(
             Tables.DIY_ROUTES, 
             diy_route_key, 
-            {'processStatus': PROCESS_STATUS.ROUTE_CREATION_SUCCESS, 'videoURL': base_video_url, 'actionStatus': ROUTE_ACTION_STATUS.CREATED, 'processedVideoLink': video_url   }, 
+            to_update,
             env
         )
     except Exception as e:
