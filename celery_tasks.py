@@ -13,6 +13,8 @@ from diy_segment_helpers import join_vids
 from text_blur import text_blur_main
 from tint_color import tint_image
 import logging
+
+from trim_video import trim_video_helper
 logging.basicConfig(level=logging.INFO)
 import copy
 from constants import Tables, S3_PATHS, Media_Basics, PROCESS_STATUS, ROUTE_ACTION_STATUS
@@ -890,11 +892,6 @@ def faceBlurJob(data, route_data):
     finally:
         try:
             if file_name != None:
-                os.remove(f'inputs/{file_name}')
-        except Exception as e:
-            print('Error while removing input file from local')
-        try:
-            if file_name != None:
                 os.remove(f'blurred/{file_name}')
         except Exception as e:
             print('Error while removing blurred file from local')
@@ -1240,6 +1237,174 @@ def directionDetectionJob(data, route_data):
             print(e)
         print(e)
     finally:
+        try:
+            if file_name != None:
+                os.remove(f'blurred/{file_name}')
+        except Exception as e:
+            print('Error while removing blurred file from local')
+
+
+
+@app.task()
+def trimVideoAPI(data):
+    file_name = None
+    diy_segment_key = {
+        'id': None,
+        'locationId': None
+    }
+    env = 'dev'
+    try:
+        if data['env'] != None:
+            env = data['env']
+        route_id = data['route_id']
+
+        splits = route_id.split('#')
+        diy_segment_key['locationId'] = splits[0]
+        diy_segment_key['id'] = splits[1]
+
+        
+
+        # ---- Idempotency check ---- 
+        idempotency_key = data.get('idempotency_key', None)   
+        if idempotency_key == None:
+            logging.info('Idempotency key not found')
+            return
+        create_success = create_record(
+            table_name=f'{env}-{Tables.IDEMPOTENCY_KEYS}',
+            part_key_name="id",
+            part_key_value=idempotency_key,
+            ttl_seconds=86400, # 24 hrs
+        )
+
+        if create_success == False:
+            # duplicate request
+            logging.info('Duplicate request')
+            return
+        # ---- End Idempotency check ---- 
+            
+
+
+        req_attributes = [
+            'videoURL',
+            'locationId',
+            'toTrimTimerange'
+        ]
+
+        route_data = get_record(
+            Tables.DIY_SEGMENTS, 
+            diy_segment_key, 
+            req_attributes, 
+            env
+        )
+
+        if route_data == None:
+            raise Exception('Route not found')
+        trimVideoJob(data, route_data)
+        return
+    except Exception as e:
+        logging.info('Error in trim video fn')
+        logging.info(e)
+        try:
+            update_db_success = update_record(
+                Tables.DIY_SEGMENTS, 
+                diy_segment_key, 
+                {
+                    'processStatus': PROCESS_STATUS.TRIM_VIDEO_ERROR, 
+                    'automationUpdateAt': get_current_time(),
+                    'actionStatus': ROUTE_ACTION_STATUS.UPDATE_FAILED,
+                }, 
+                env
+            )
+            if update_db_success == False:
+                raise Exception('Error while updating route in DB')
+        except Exception as e:
+            logging.info('Error while updating route in DB')
+            logging.info(e)
+
+
+def trimVideoJob(data, route_data):
+    route_id = None
+    file_name = None
+    env = 'dev'
+    diy_segment_key = {
+        'id': None,
+        'locationId': None
+    }
+    try:
+        if data['env'] != None:
+            env = data['env']
+        route_id = data['route_id']
+
+        splits = route_id.split('#')
+        diy_segment_key['locationId'] = splits[0]
+        diy_segment_key['id'] = splits[1]
+        
+        update_db_success = update_record(
+            Tables.DIY_SEGMENTS, 
+            diy_segment_key, 
+            {
+                'processStatus': PROCESS_STATUS.TRIM_VIDEO_START, 
+                'automationUpdateAt': get_current_time(),
+            }, 
+            env
+        )
+        if update_db_success == False:
+            raise Exception('Error while updating route in DB')
+
+
+        video_url = route_data['videoURL']
+        file_name = video_url.split('/')[-1]
+        route_s3_path = get_route_s3_path(route_data, False, True)
+        download_success = download_file_from_s3(
+            bucket_name, 
+            f'{env}/{route_s3_path}/{file_name}', 
+            f'inputs/{file_name}'
+        )
+        if download_success == False:
+            raise Exception('download failed')
+        logging.info('Starting the trim video fn')
+        trim_video_helper(f'inputs/{file_name}', f'blurred/{file_name}', route_data['toTrimTimerange'])
+        
+        
+        update_db_success = update_record(
+            Tables.DIY_SEGMENTS, 
+            diy_segment_key, 
+            {
+                'processStatus': PROCESS_STATUS.TRIM_VIDEO_SUCCESS, 
+                'automationUpdateAt': get_current_time(),
+                'actionStatus': ROUTE_ACTION_STATUS.UPDATED
+            }, 
+            env
+        )
+
+        if update_db_success == False:
+            raise Exception('Error while updating route in DB')
+        
+        logging.info('Done :+1')
+    except Exception as e:
+        try:
+            update_db_success = update_record(
+                Tables.DIY_SEGMENTS, 
+                diy_segment_key, 
+                {
+                    'processStatus': PROCESS_STATUS.TRIM_VIDEO_ERROR, 
+                    'automationUpdateAt': get_current_time(),
+                    'actionStatus': ROUTE_ACTION_STATUS.UPDATE_FAILED,
+                }, 
+                env
+            )
+            if update_db_success == False:
+                raise Exception('Error while updating route in DB')
+        except Exception as e:
+            logging.error(e)
+            raise Exception('Error while updating route in DB')
+        print(e)
+    finally:
+        try:
+            if file_name != None:
+                os.remove(f'inputs/{file_name}')
+        except Exception as e:
+            print('Error while removing input file from local')
         try:
             if file_name != None:
                 os.remove(f'blurred/{file_name}')
