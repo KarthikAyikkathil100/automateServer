@@ -821,6 +821,12 @@ def faceBlurJob(data, route_data):
         )
         if download_success == False:
             raise Exception('download failed')
+        
+        video_duration = 0
+        if is_diy_segment_req == True:
+            video_duration = get_video_duration(f'inputs/{file_name}')
+            if video_duration != None:
+                video_duration = int(video_duration)
 
         # 2) Blur the video
         blur_success = blurVideo(file_name)
@@ -833,7 +839,8 @@ def faceBlurJob(data, route_data):
             Tables.DIY_ROUTES if is_diy_route_req == True else Tables.DIY_SEGMENTS if is_diy_segment_req == True else Tables.ROUTES, 
             diy_route_key if is_diy_route_req == True else diy_segment_key if is_diy_segment_req == True else route_key, 
             {
-                'automationUpdateAt': get_current_time()
+                'automationUpdateAt': get_current_time(),
+                'totalDuration': video_duration
             }, 
             env
         )
