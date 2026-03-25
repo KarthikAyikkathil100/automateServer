@@ -1362,8 +1362,16 @@ def trimVideoJob(data, route_data):
         )
         if download_success == False:
             raise Exception('download failed')
+
+        video_duration = get_video_duration(f'inputs/{file_name}')
+
+        timeRanges = route_data.get('toTrimTimerange', [])
+        for timeRange in timeRanges:
+            if timeRange[1] > video_duration:
+                raise Exception('Invalid time range')
+
         logging.info('Starting the trim video fn')
-        trim_video_helper(f'inputs/{file_name}', f'blurred/{file_name}', route_data['toTrimTimerange'])
+        trim_video_helper(f'inputs/{file_name}', f'blurred/{file_name}', timeRanges)
 
         # 3) Upload blurred video to S3
         upload_success = upload_video_to_s3(
