@@ -1364,6 +1364,17 @@ def trimVideoJob(data, route_data):
             raise Exception('download failed')
         logging.info('Starting the trim video fn')
         trim_video_helper(f'inputs/{file_name}', f'blurred/{file_name}', route_data['toTrimTimerange'])
+
+        # 3) Upload blurred video to S3
+        upload_success = upload_video_to_s3(
+            f'blurred/{file_name}', 
+            bucket_name, 
+            None, 
+            env, 
+            route_s3_path
+        )
+        if upload_success == False:
+            raise Exception('Upload failed')
         
         
         update_db_success = update_record(
