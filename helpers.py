@@ -48,7 +48,7 @@ def store_detected_directions(data, key, env = 'dev'):
         )
         return True
     except Exception as e:
-        logging.info(e)
+        logging.error(e)
         logging.info('Error while storing detected directions in Dynamo DB')
         return None
 
@@ -70,6 +70,7 @@ def update_route_field(key, field, value, env = 'dev'):
         )
         return True
     except Exception as e:
+        print(e)
         logging.info('Error while storing detected directions in Dynamo DB')
         return False
 
