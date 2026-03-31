@@ -937,7 +937,8 @@ def createRouteAPI(data):
         if route_data == None:
             raise Exception('Route not found')
 
-        if (route_data.get('status', None) != 'SUBMITTED'):
+        route_status = route_data.get('status', None)
+        if route_status != 'SUBMITTED' and route_status != 'REEVALUATE':
             raise Exception('Route not submitted')
 
         update_record(Tables.DIY_ROUTES, diy_route_key, {'processStatus': 'ROUTE_CREATION_START'}, env)
@@ -1364,11 +1365,30 @@ def trimVideoJob(data, route_data):
             raise Exception('download failed')
 
         video_duration = get_video_duration(f'inputs/{file_name}')
+        if video_duration is None:
+            raise Exception('Unable to read video duration')
 
         timeRanges = route_data.get('toTrimTimerange', [])
+        if isinstance(timeRanges, list) == False:
+            raise Exception('Invalid time range')
+
+        total_trim_duration = 0
         for timeRange in timeRanges:
-            if timeRange[1] > video_duration:
+            if isinstance(timeRange, list) == False or len(timeRange) != 2:
                 raise Exception('Invalid time range')
+
+            start_time = int(timeRange[0])
+            end_time = int(timeRange[1])
+            if start_time < 0 or end_time <= start_time:
+                raise Exception('Invalid time range')
+            if end_time > video_duration:
+                raise Exception('Invalid time range')
+
+            total_trim_duration += (end_time - start_time)
+
+        remaining_duration = video_duration - total_trim_duration
+        if remaining_duration < 10:
+            raise Exception('Invalid time range: remaining duration should be at least 10 seconds')
 
         logging.info('Starting the trim video fn')
         trim_video_helper(f'inputs/{file_name}', f'blurred/{file_name}', timeRanges)
