@@ -1209,7 +1209,6 @@ def directionDetectionJob(data, route_data):
             {
                 'processStatus': PROCESS_STATUS.DIRECTION_DETECTION_SUCCESS, 
                 'automationUpdateAt': get_current_time(),
-                'actionStatus': ROUTE_ACTION_STATUS.UPDATED,
                 f'{"newSourceCaption" if is_diy_route_req == False and is_diy_segment_req == False else "directions"}': final_directions
             }, 
             env
