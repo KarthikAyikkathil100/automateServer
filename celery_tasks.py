@@ -1019,7 +1019,6 @@ def createRouteJob(diy_route_key, processed_video_urls, base_video_urls, ids, en
         to_update = {
             'processStatus': PROCESS_STATUS.ROUTE_CREATION_SUCCESS, 
             'videoURL': base_video_url, 
-            'actionStatus': ROUTE_ACTION_STATUS.CREATED, 
             'processedVideoLink': video_url, 
             'totalDuration': video_duration   
         }
