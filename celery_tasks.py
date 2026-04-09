@@ -950,10 +950,10 @@ def createRouteAPI(data):
             [location_id, id] = segmentId.split('#')
             segment_keys.append({'locationId': location_id, 'id': id})
 
-        segment_data = batch_get_items(Tables.DIY_SEGMENTS, segment_keys, ['locationId', 'id', 'status', 'processedVideoLink', 'videoURL'], env)
-        processed_video_urls = [x.get('processedVideoLink', None) for x in segment_data]
-        base_video_urls = [x.get('videoURL', None) for x in segment_data]
-        
+        segment_data = batch_get_items(Tables.DIY_SEGMENTS, segment_keys, ['locationId', 'id', 'status', 'processedVideoLink', 'videoURL', 'DELETED'], env)
+        processed_video_urls = [x.get('processedVideoLink', None) for x in segment_data if x.get('DELETED', False) == False]
+        base_video_urls = [x.get('videoURL', None) for x in segment_data if x.get('DELETED', False) == False]
+
         processed_vid_id = str(uuid.uuid4())
         base_vid_id = str(uuid.uuid4())
 
@@ -980,6 +980,8 @@ def createRouteJob(diy_route_key, processed_video_urls, base_video_urls, ids, en
     local_file_name = None
     base_local_file_name = None
     try:
+        if len(processed_video_urls) == 0:
+            raise Exception('Need at least 1 video')
         processed_vid_id = ids[0]
         base_vid_id = None
         if len(ids) > 1:
@@ -1008,7 +1010,9 @@ def createRouteJob(diy_route_key, processed_video_urls, base_video_urls, ids, en
             upload_success = upload_video_to_s3(f'final/{base_local_file_name}', bucket_name, None, env, S3_PATHS.DIY_ROUTES)
             if upload_success == False:
                 raise Exception('Upload failed')
-            
+        elif base_vid_id != None and len(base_video_urls) == 0:
+            raise Exception('Need at least 1 base video')
+        
         
         # 3) Update the route status
         video_url = f'{Media_Basics.MediaUrlPrefix}/{env}/{S3_PATHS.DIY_ROUTES}/{processed_vid_id}.mp4'
