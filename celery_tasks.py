@@ -1000,12 +1000,10 @@ def createRouteJob(diy_route_key, processed_video_urls, base_video_urls, ids, en
         upload_success = upload_video_to_s3(f'final/{local_file_name}', bucket_name, None, env, S3_PATHS.DIY_ROUTES)
         if upload_success == False:
             raise Exception('Upload failed')
-        
         if base_vid_id != None and len(base_video_urls) > 0:
             base_local_file_name = f'{base_vid_id}.mp4'
             # 1) Join the segments
             join_vids(base_video_urls, f'final/{base_local_file_name}')
-
             # 2) Upload video to S3
             upload_success = upload_video_to_s3(f'final/{base_local_file_name}', bucket_name, None, env, S3_PATHS.DIY_ROUTES)
             if upload_success == False:

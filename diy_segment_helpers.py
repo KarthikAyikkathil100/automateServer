@@ -20,12 +20,39 @@ def get_video_duration(video_path):
     ]
     
     try:
-        result = subprocess.run(command, check=True, capture_output=True, text=True)
+        result = subprocess.run(command, check=True, capture_output=True, text=True, timeout=60)
         data = json.loads(result.stdout)
         duration = float(data['format']['duration'])
         return duration
+    except subprocess.TimeoutExpired as e:
+        raise RuntimeError(f"Timed out getting duration for {video_path}: {e}")
     except (subprocess.CalledProcessError, KeyError, ValueError, json.JSONDecodeError) as e:
         raise RuntimeError(f"Failed to get duration for {video_path}: {e}")
+
+def run_ffmpeg_with_progress(command, timeout_seconds=None):
+    """
+    Run ffmpeg command with visible progress.
+
+    Args:
+        command: ffmpeg command list
+        timeout_seconds: maximum runtime before force terminate, or None for no timeout
+
+    Returns:
+        bool: True when ffmpeg exits successfully, else False
+    """
+    print(f"Running ffmpeg command: {' '.join(command)}")
+    try:
+        subprocess.run(command, check=True, timeout=timeout_seconds)
+        return True
+    except subprocess.TimeoutExpired:
+        print(f"ffmpeg timed out after {timeout_seconds} seconds")
+        return False
+    except subprocess.CalledProcessError as e:
+        print(f"ffmpeg failed with return code: {e.returncode}")
+        return False
+    except Exception as e:
+        print(f"ffmpeg execution failed unexpectedly: {e}")
+        return False
 
 
 def get_all_video_durations(video_urls):
@@ -69,13 +96,19 @@ def create_crossfade_video(video_urls, video_durations, output_file='output.mp4'
     if len(video_urls) < 1:
         raise ValueError("Need at least 1 video")
     
+    if transition_duration < 0:
+        raise ValueError("transition_duration must be non-negative")
+
     # Build FFmpeg command
-    command = ['ffmpeg']
+    command = ['ffmpeg', '-nostdin']
     
     # Add all input videos
     for url in video_urls:
         command.extend(['-i', url])
     
+    # Normalize each input stream before transitions to avoid timestamp/FPS drift
+    normalize_filter = "fps=30,settb=AVTB,setsar=1"
+
     # Handle single video case (no transitions needed)
     if len(video_urls) == 1:
         filter_parts = []
@@ -83,18 +116,23 @@ def create_crossfade_video(video_urls, video_durations, output_file='output.mp4'
         # Determine scaling filter if dimensions are specified
         if width and height:
             if scale_mode == 'fit':
-                filter_parts.append(f"[0:v]scale={width}:{height}:force_original_aspect_ratio=decrease,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2[v]")
+                filter_parts.append(
+                    f"[0:v]scale={width}:{height}:force_original_aspect_ratio=decrease,"
+                    f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,{normalize_filter}[v]"
+                )
             elif scale_mode == 'crop':
-                filter_parts.append(f"[0:v]scale={width}:{height}:force_original_aspect_ratio=increase,crop={width}:{height}[v]")
+                filter_parts.append(
+                    f"[0:v]scale={width}:{height}:force_original_aspect_ratio=increase,"
+                    f"crop={width}:{height},{normalize_filter}[v]"
+                )
             elif scale_mode == 'stretch':
-                filter_parts.append(f"[0:v]scale={width}:{height}[v]")
+                filter_parts.append(f"[0:v]scale={width}:{height},{normalize_filter}[v]")
         elif width:
-            filter_parts.append(f"[0:v]scale={width}:-2[v]")
+            filter_parts.append(f"[0:v]scale={width}:-2,{normalize_filter}[v]")
         elif height:
-            filter_parts.append(f"[0:v]scale=-2:{height}[v]")
+            filter_parts.append(f"[0:v]scale=-2:{height},{normalize_filter}[v]")
         else:
-            # No scaling, just copy
-            filter_parts.append(f"[0:v]copy[v]")
+            filter_parts.append(f"[0:v]{normalize_filter}[v]")
         
         filter_complex = ';'.join(filter_parts)
         command.extend([
@@ -132,13 +170,25 @@ def create_crossfade_video(video_urls, video_durations, output_file='output.mp4'
     
     for i in range(len(video_urls)):
         duration = video_durations[i]
+
+        if duration <= 0:
+            raise ValueError(f"Video at index {i} has invalid duration: {duration}")
+
+        if transition_duration > 0 and duration < transition_duration:
+            raise ValueError(
+                f"Video at index {i} is shorter than the transition duration "
+                f"({duration:.2f}s < {transition_duration:.2f}s)"
+            )
+
+        base_ops = []
+        if scale_filter:
+            base_ops.append(scale_filter)
+        base_ops.append(normalize_filter)
+        base_filter = f"[{i}:v]{','.join(base_ops)},"
         
         if i == 0:
             # First video: all but last second
             before_transition = duration - transition_duration
-            base_filter = f"[{i}:v]"
-            if scale_filter:
-                base_filter += f"{scale_filter},"
             
             filter_parts.append(
                 f"{base_filter}trim=0:{before_transition},setpts=PTS-STARTPTS[v{i}_main]"
@@ -146,10 +196,6 @@ def create_crossfade_video(video_urls, video_durations, output_file='output.mp4'
             segment_labels.append(f"[v{i}_main]")
             
             # Last second of first video (fade out)
-            base_filter = f"[{i}:v]"
-            if scale_filter:
-                base_filter += f"{scale_filter},"
-            
             filter_parts.append(
                 f"{base_filter}trim={before_transition}:{duration},setpts=PTS-STARTPTS,"
                 f"format=yuva420p,fade=t=out:st=0:d={transition_duration}:alpha=1[v{i}_fade]"
@@ -157,10 +203,6 @@ def create_crossfade_video(video_urls, video_durations, output_file='output.mp4'
         
         elif i == len(video_urls) - 1:
             # Last video: first second (fade in) + rest
-            base_filter = f"[{i}:v]"
-            if scale_filter:
-                base_filter += f"{scale_filter},"
-            
             filter_parts.append(
                 f"{base_filter}trim=0:{transition_duration},setpts=PTS-STARTPTS,"
                 f"format=yuva420p,fade=t=in:st=0:d={transition_duration}:alpha=1[v{i}_fade]"
@@ -174,10 +216,6 @@ def create_crossfade_video(video_urls, video_durations, output_file='output.mp4'
             segment_labels.append(f"[transition{i}]")
             
             # Rest of last video
-            base_filter = f"[{i}:v]"
-            if scale_filter:
-                base_filter += f"{scale_filter},"
-            
             filter_parts.append(
                 f"{base_filter}trim={transition_duration}:{duration},setpts=PTS-STARTPTS[v{i}_rest]"
             )
@@ -186,9 +224,6 @@ def create_crossfade_video(video_urls, video_durations, output_file='output.mp4'
         else:
             # Middle videos: fade in + middle part + fade out
             before_transition = duration - transition_duration
-            base_filter = f"[{i}:v]"
-            if scale_filter:
-                base_filter += f"{scale_filter},"
             
             # Fade in (first second)
             filter_parts.append(
@@ -227,6 +262,7 @@ def create_crossfade_video(video_urls, video_durations, output_file='output.mp4'
     command.extend([
         '-filter_complex', filter_complex,
         '-map', '[v]',
+        '-r', '30',
         '-pix_fmt', 'yuv420p',
         '-y',  # Overwrite output file
         output_file
@@ -235,7 +271,7 @@ def create_crossfade_video(video_urls, video_durations, output_file='output.mp4'
     return command
 
 
-def join_vids(urls, output_path):
+def join_vids(urls, output_path, timeout_seconds=None):
     success = False
     try:
         video_durations = get_all_video_durations(urls)
@@ -251,14 +287,7 @@ def join_vids(urls, output_path):
         )
 
         # Execute
-        try:
-            subprocess.run(command, check=True, capture_output=True, text=True)
-            success = True
-        except subprocess.CalledProcessError as e:
-            print("Error occurred:")
-            print(e.stderr)
-        except Exception as e:
-            print(e)
+        success = run_ffmpeg_with_progress(command, timeout_seconds=timeout_seconds)
     except Exception as e:
         print(e)
     
