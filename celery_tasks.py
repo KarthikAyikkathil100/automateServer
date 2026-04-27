@@ -138,7 +138,7 @@ def arrowAttachAPI(data):
             env = data['env']
         route_id = data['route_id']
 
-        if data.get('is_diy_route_req', False) == True:
+        if data.get('is_diy_route_req', False) == True or data.get('is_diy_lite_route', False) == True:
             is_diy_route_req = True
             splits = route_id.split('#')
             diy_route_key['stationId'] = splits[0]
@@ -243,7 +243,7 @@ def arrowAttachJob(data, route_data):
         if data['env'] != None:
             env = data['env']
 
-        if data.get('is_diy_route_req', False) == True:
+        if data.get('is_diy_route_req', False) == True or data.get('is_diy_lite_route', False) == True:
             is_diy_route_req = True
             splits = route_id.split('#')
             diy_route_key['stationId'] = splits[0]
@@ -452,7 +452,7 @@ def textBlurAPI(data):
             env = data['env']
         route_id = data['route_id']
 
-        if data.get('is_diy_route_req', False) == True:
+        if data.get('is_diy_route_req', False) == True or data.get('is_diy_lite_route', False) == True:
             is_diy_route_req = True
             splits = route_id.split('#')
             diy_route_key['stationId'] = splits[0]
@@ -511,8 +511,17 @@ def textBlurAPI(data):
         return 
     except Exception as e:
         try:
-            update_route_field(route_id, 'processStatus', 'TEXT_BLUR_ERROR', env)
-            update_automation_time(route_id, env)
+            update_db_success = update_record(
+                Tables.DIY_ROUTES if is_diy_route_req == True else Tables.DIY_SEGMENTS if is_diy_segment_req == True else Tables.ROUTES, 
+                diy_route_key if is_diy_route_req == True else diy_segment_key if is_diy_segment_req == True else route_key, 
+                {
+                    'processStatus': PROCESS_STATUS.TEXT_BLUR_ERROR, 
+                    'automationUpdateAt': get_current_time(),
+                }, 
+                env
+            )
+            if update_db_success == False:
+                raise Exception('DB update failed')
         except Exception as e:
             print('Error while updating route in DB')
             print(e)
@@ -550,7 +559,7 @@ def textBlurJob(data, route_data):
         if data['env'] != None:
             env = data['env']
 
-        if data.get('is_diy_route_req', False) == True:
+        if data.get('is_diy_route_req', False) == True or data.get('is_diy_lite_route', False) == True:
             is_diy_route_req = True
             splits = route_id.split('#')
             diy_route_key['stationId'] = splits[0]
@@ -692,7 +701,7 @@ def faceBlurAPI(data):
             env = data['env']
         route_id = data['route_id']
 
-        if data.get('is_diy_route_req', False) == True:
+        if data.get('is_diy_route_req', False) == True or data.get('is_diy_lite_route', False) == True:
             is_diy_route_req = True
             splits = route_id.split('#')
             diy_route_key['stationId'] = splits[0]
@@ -785,7 +794,7 @@ def faceBlurJob(data, route_data):
             env = data['env']
         update_field_success = False
 
-        if data.get('is_diy_route_req', False) == True:
+        if data.get('is_diy_route_req', False) == True or data.get('is_diy_lite_route', False) == True:
             is_diy_route_req = True
             splits = route_id.split('#')
             diy_route_key['stationId'] = splits[0]
@@ -1073,7 +1082,7 @@ def directionDetectionAPI(data):
             env = data['env']
         route_id = data['route_id']
 
-        if data.get('is_diy_route_req', False) == True:
+        if data.get('is_diy_route_req', False) == True or data.get('is_diy_lite_route', False) == True:
             is_diy_route_req = True
             splits = route_id.split('#')
             diy_route_key['stationId'] = splits[0]
@@ -1163,7 +1172,7 @@ def directionDetectionJob(data, route_data):
         route_id = data['route_id']
 
 
-        if data.get('is_diy_route_req', False) == True:
+        if data.get('is_diy_route_req', False) == True or data.get('is_diy_lite_route', False) == True:
             is_diy_route_req = True
             splits = route_id.split('#')
             diy_route_key['stationId'] = splits[0]
