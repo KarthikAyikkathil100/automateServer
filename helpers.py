@@ -425,18 +425,24 @@ def get_location_data(item_id, env='dev', fields=['id']):
 
 
 def get_video_duration(path):
-    result = subprocess.run(
-        [
-            "ffprobe", "-v", "error",
-            "-show_entries", "format=duration",
-            "-of", "default=noprint_wrappers=1:nokey=1",
-            path
-        ],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True
-    )
-    return float(result.stdout.strip())
+    try:
+        result = subprocess.run(
+            [
+                "ffprobe", "-v", "error",
+                "-show_entries", "format=duration",
+                "-of", "default=noprint_wrappers=1:nokey=1",
+                path
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True
+        )
+        print('result')
+        print(result)
+        return float(result.stdout.strip())
+    except Exception as e:
+        logging.info(f'Error while getting video duration: {e}')
+        raise e
 
 def create_record(
     table_name: str,

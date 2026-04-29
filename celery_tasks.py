@@ -273,6 +273,8 @@ def arrowAttachJob(data, route_data):
         showAnimationsChanged = None if (is_diy_route_req == False and is_diy_segment_req == False) else route_data.get('showAnimationsChanged', False)
         reRunArrowAttach = None if (is_diy_route_req == False and is_diy_segment_req == False) else route_data.get('reRunArrowAttach', True)
         total_duration = route_data.get('totalDuration', None)
+        if total_duration == 0:
+            total_duration = None
 
         if showAnimationsChanged == None:
             showAnimationsChanged = False

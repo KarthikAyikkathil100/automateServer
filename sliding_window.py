@@ -154,8 +154,20 @@ def sliding_window_main(master, file_name, fps, total_frames):
         data = copy(master)
         finalData = sliding_window(data, fps)
         outputData = process_sliding_window_output(finalData)
+        if outputData is None:
+            outputData = []
         prev = None
         straightStubData = []
+        last_second_in_video = round(total_frames/fps) if fps else 0
+
+        if len(outputData) == 0:
+            return [{
+                'directionIcon': 'END',
+                'message': getDirectionMessage('END'),
+                'startTime': 0,
+                'endTime': last_second_in_video,
+            }]
+
         if (outputData[0])['directionIcon'] != 'straight' and (outputData[0])['startTime'] != 0:
             straightStubData.append({
                 'directionIcon': 'straight',
@@ -181,7 +193,6 @@ def sliding_window_main(master, file_name, fps, total_frames):
                     straightStubData.append(el)
             prev = el
         
-        last_second_in_video = round(total_frames/fps)
         if len(straightStubData) > 0 and (straightStubData[-1])['endTime'] > last_second_in_video:
             # Change the endTime of last detected direction to be => last_second_in_video
             (straightStubData[-1])['endTime'] = last_second_in_video
@@ -225,7 +236,7 @@ def sliding_window_main(master, file_name, fps, total_frames):
 
 
         
-        if (straightStubData[0]['startTime'] != 0):
+        if len(straightStubData) > 0 and (straightStubData[0]['startTime'] != 0):
             straightStubData.insert(0, {
                 'directionIcon': 'straight',
                 'message': get_direction_mesage('straight'),
