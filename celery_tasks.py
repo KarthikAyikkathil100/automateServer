@@ -1260,19 +1260,36 @@ def directionDetectionJob(data, route_data):
 @app.task()
 def trimVideoAPI(data):
     file_name = None
+    diy_route_key = {
+        'stationId': None,
+        'id': None
+    }
     diy_segment_key = {
         'id': None,
         'locationId': None
     }
+    is_diy_route_req = False
+    is_diy_segment_req = False
+    trim_video_error_status = PROCESS_STATUS.TRIM_VIDEO_ERROR
     env = 'dev'
     try:
         if data['env'] != None:
             env = data['env']
         route_id = data['route_id']
 
-        splits = route_id.split('#')
-        diy_segment_key['locationId'] = splits[0]
-        diy_segment_key['id'] = splits[1]
+        if data.get('is_diy_segment_req', False) == True:
+            is_diy_segment_req = True
+            splits = route_id.split('#')
+            diy_segment_key['locationId'] = splits[0]
+            diy_segment_key['id'] = splits[1]
+        elif data.get('is_diy_lite_route', False) == True:
+            is_diy_route_req = True
+            trim_video_error_status = PROCESS_STATUS.LITE_ROUTE_VIDEO_TRIM_ERROR
+            splits = route_id.split('#')
+            diy_route_key['stationId'] = splits[0]
+            diy_route_key['id'] = splits[1]
+        else:
+            raise Exception('Invalid trim request type')
 
         
 
@@ -1303,8 +1320,8 @@ def trimVideoAPI(data):
         ]
 
         route_data = get_record(
-            Tables.DIY_SEGMENTS, 
-            diy_segment_key, 
+            Tables.DIY_SEGMENTS if is_diy_segment_req == True else Tables.DIY_ROUTES, 
+            diy_segment_key if is_diy_segment_req == True else diy_route_key, 
             req_attributes, 
             env
         )
@@ -1318,10 +1335,10 @@ def trimVideoAPI(data):
         logging.info(e)
         try:
             update_db_success = update_record(
-                Tables.DIY_SEGMENTS, 
-                diy_segment_key, 
+                Tables.DIY_SEGMENTS if is_diy_segment_req == True else Tables.DIY_ROUTES, 
+                diy_segment_key if is_diy_segment_req == True else diy_route_key, 
                 {
-                    'processStatus': PROCESS_STATUS.TRIM_VIDEO_ERROR, 
+                    'processStatus': trim_video_error_status, 
                     'automationUpdateAt': get_current_time(),
                     'actionStatus': ROUTE_ACTION_STATUS.UPDATE_FAILED,
                 }, 
@@ -1338,24 +1355,45 @@ def trimVideoJob(data, route_data):
     route_id = None
     file_name = None
     env = 'dev'
+    diy_route_key = {
+        'stationId': None,
+        'id': None
+    }
     diy_segment_key = {
         'id': None,
         'locationId': None
     }
+    is_diy_route_req = False
+    is_diy_segment_req = False
+    trim_video_start_status = PROCESS_STATUS.TRIM_VIDEO_START
+    trim_video_error_status = PROCESS_STATUS.TRIM_VIDEO_ERROR
+    trim_video_success_status = PROCESS_STATUS.TRIM_VIDEO_SUCCESS
     try:
         if data['env'] != None:
             env = data['env']
         route_id = data['route_id']
 
-        splits = route_id.split('#')
-        diy_segment_key['locationId'] = splits[0]
-        diy_segment_key['id'] = splits[1]
+        if data.get('is_diy_segment_req', False) == True:
+            is_diy_segment_req = True
+            splits = route_id.split('#')
+            diy_segment_key['locationId'] = splits[0]
+            diy_segment_key['id'] = splits[1]
+        elif data.get('is_diy_lite_route', False) == True:
+            is_diy_route_req = True
+            trim_video_start_status = PROCESS_STATUS.LITE_ROUTE_VIDEO_TRIM_START
+            trim_video_error_status = PROCESS_STATUS.LITE_ROUTE_VIDEO_TRIM_ERROR
+            trim_video_success_status = PROCESS_STATUS.LITE_ROUTE_VIDEO_TRIM_SUCCESS
+            splits = route_id.split('#')
+            diy_route_key['stationId'] = splits[0]
+            diy_route_key['id'] = splits[1]
+        else:
+            raise Exception('Invalid trim request type')
         
         update_db_success = update_record(
-            Tables.DIY_SEGMENTS, 
-            diy_segment_key, 
+            Tables.DIY_SEGMENTS if is_diy_segment_req == True else Tables.DIY_ROUTES, 
+            diy_segment_key if is_diy_segment_req == True else diy_route_key, 
             {
-                'processStatus': PROCESS_STATUS.TRIM_VIDEO_START, 
+                'processStatus': trim_video_start_status, 
                 'automationUpdateAt': get_current_time(),
             }, 
             env
@@ -1366,7 +1404,7 @@ def trimVideoJob(data, route_data):
 
         video_url = route_data['videoURL']
         file_name = video_url.split('/')[-1]
-        route_s3_path = get_route_s3_path(route_data, False, True)
+        route_s3_path = get_route_s3_path(route_data, is_diy_route_req, is_diy_segment_req)
         download_success = download_file_from_s3(
             bucket_name, 
             f'{env}/{route_s3_path}/{file_name}', 
@@ -1417,10 +1455,10 @@ def trimVideoJob(data, route_data):
         
         
         update_db_success = update_record(
-            Tables.DIY_SEGMENTS, 
-            diy_segment_key, 
+            Tables.DIY_SEGMENTS if is_diy_segment_req == True else Tables.DIY_ROUTES, 
+            diy_segment_key if is_diy_segment_req == True else diy_route_key, 
             {
-                'processStatus': PROCESS_STATUS.TRIM_VIDEO_SUCCESS, 
+                'processStatus': trim_video_success_status, 
                 'automationUpdateAt': get_current_time(),
                 'actionStatus': ROUTE_ACTION_STATUS.UPDATED
             }, 
@@ -1434,10 +1472,10 @@ def trimVideoJob(data, route_data):
     except Exception as e:
         try:
             update_db_success = update_record(
-                Tables.DIY_SEGMENTS, 
-                diy_segment_key, 
+                Tables.DIY_SEGMENTS if is_diy_segment_req == True else Tables.DIY_ROUTES, 
+                diy_segment_key if is_diy_segment_req == True else diy_route_key, 
                 {
-                    'processStatus': PROCESS_STATUS.TRIM_VIDEO_ERROR, 
+                    'processStatus': trim_video_error_status, 
                     'automationUpdateAt': get_current_time(),
                     'actionStatus': ROUTE_ACTION_STATUS.UPDATE_FAILED,
                 }, 
