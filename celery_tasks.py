@@ -177,6 +177,7 @@ def arrowAttachAPI(data):
             'videoURL',
             'locationId' if (is_diy_route_req == True or is_diy_segment_req == True) else 'locId',
             'totalDuration',
+            'processedVideoLink'
         ]
 
         if (is_diy_route_req == True or is_diy_segment_req == True):
@@ -268,6 +269,9 @@ def arrowAttachJob(data, route_data):
         )
         if update_db_success == False:
             raise Exception('Error while updating route in DB')
+            
+        existing_processed_video_link = route_data.get('processedVideoLink', None)
+            
         new_route = False
         existingSourceCaption = route_data['sourceCaption' if (is_diy_route_req == False and is_diy_segment_req == False) else 'directions']
         showAnimationsChanged = None if (is_diy_route_req == False and is_diy_segment_req == False) else route_data.get('showAnimationsChanged', False)
@@ -365,6 +369,8 @@ def arrowAttachJob(data, route_data):
 
             if total_duration == None:
                 update_data['totalDuration'] = int(video_duration)
+            if existing_processed_video_link != None:
+                update_data['oldProcessedVideoLink'] = existing_processed_video_link
             
             db_update_success = update_record(
                 Tables.DIY_ROUTES if is_diy_route_req == True else Tables.DIY_SEGMENTS if is_diy_segment_req == True else Tables.ROUTES, 
