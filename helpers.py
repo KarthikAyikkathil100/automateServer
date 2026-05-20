@@ -2,6 +2,7 @@ import boto3
 import logging
 logging.basicConfig(level=logging.INFO)
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from decimal import Decimal
 from typing import Dict, Any, Optional
 from botocore.exceptions import ClientError
 import psutil

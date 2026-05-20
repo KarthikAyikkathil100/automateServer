@@ -24,14 +24,22 @@ directionMessages = {
     'END': ['Destination arrived', 'You\'ve arrived', 'Destination reached', 'You\'re at your destination'],
 }
 
+distantDirectionMessages = {
+    'STRAIGHT': ['Go straight for :{distance}', 'Continue forward for :{distance}', 'Keep going straight for :{distance}', 'Proceed forward for :{distance}', 'Walk straight ahead for :{distance}', 'Head forward for :{distance}'],
+    'LEFT': ['In :{distance} turn left', 'In :{distance} take a left', 'In :{distance} make a left turn', 'In :{distance} go left', 'In :{distance} turn to your left', 'In :{distance} head left', 'In :{distance} move left'],
+    'S_LEFT': ['In :{distance} turn slight left', 'In :{distance} take a slight left', 'In :{distance} make a gentle left turn', 'In :{distance} drift left slightly', 'In :{distance} lean a little left', 'In :{distance} gradually turn left'],
+    'RIGHT': ['In :{distance} turn right', 'In :{distance} take a right', 'In :{distance} make a right turn', 'In :{distance} go right', 'In :{distance} turn to your right', 'In :{distance} head right', 'In :{distance} move right'],
+    'S_RIGHT': ['Turn slight right for :{distance}', 'Take a slight right for :{distance}', 'Make a gentle right turn for :{distance}', 'Drift right slightly for :{distance}', 'Lean a little right for :{distance}', 'Gradually turn right for :{distance}'],
+    'END': ['In :{distance} destination arrived', 'In :{distance} you\'ve arrived', 'In :{distance} destination reached', 'In :{distance} you\'re at your destination'],
+}
 
-def getDirectionMessage(direction: str) -> str:
+def getDirectionMessage(direction: str, getDistantMsg: bool = False) -> str:
     try:
-        validDirections = list(directionMessages.keys())
+        validDirections = list((distantDirectionMessages if getDistantMsg else directionMessages).keys())
         if direction not in validDirections:
             return 'Unknown direction'
         
-        validMessages = directionMessages.get(direction)
+        validMessages = (distantDirectionMessages if getDistantMsg else directionMessages).get(direction)
         randomIndex = random.randrange(0, len(validMessages))
         return validMessages[randomIndex]
     except Exception as e:

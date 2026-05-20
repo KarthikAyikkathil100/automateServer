@@ -10,8 +10,11 @@ import video
 import json  # Importing the json module
 from datetime import datetime
 import logging
+from constants import CalculationMetrics
 from sliding_window import sliding_window_main, getDirectionMessage
+from decimal import Decimal
 from typing import List, TypedDict
+from animation_gif_helpers import checkIfTurn
 logging.basicConfig(level=logging.INFO)
 
 from helpers import  update_route_field
@@ -140,6 +143,7 @@ class DirectionData(TypedDict):
     directionIcon: str
     message: str
     description: str
+    distance: Decimal
 
 def finalDirectionGrouping(data: List[DirectionData]) -> List[DirectionData]:
     try:
@@ -164,6 +168,63 @@ def finalDirectionGrouping(data: List[DirectionData]) -> List[DirectionData]:
         return groupedData
     except Exception as e:
         logging.info('Error in finalDirectionGrouping')
+        logging.info(e)
+        return False
+
+def enhanceDirectionsWithDistance(data: List[DirectionData]) -> List[DirectionData]:
+    try:
+        newDirections : List[DirectionData] = []
+        for index, directionInstance in enumerate(data):
+            startTime = directionInstance['startTime']
+            endTime = directionInstance['endTime']
+            duration = endTime - startTime
+            direction = directionInstance['directionIcon']
+            if direction == directionTypes.get('STRAIGHT'):
+                if duration >= CalculationMetrics.TRIGGER_DISTANCE_CAPTION_ON_DURATION:
+                    currentStraightEnd = startTime + CalculationMetrics.TRIGGER_DISTANCE_CAPTION_AFTER
+                    nextIsTurn = False
+                    if index + 1 < len(data):
+                        nextIsTurn = checkIfTurn(data[index + 1]['directionIcon'])
+
+                    turnNoticeStartTime = endTime - CalculationMetrics.DURATION_BEFORE_TURN_NOTICE
+                    straightCaptionEnd = turnNoticeStartTime if nextIsTurn else endTime
+                    distance = (straightCaptionEnd - currentStraightEnd) * CalculationMetrics.AVG_DISTANCE_PER_SEC_FT
+                    directionInstance['description'] = getDirectionMessage(direction, True)
+                    directionInstance['endTime'] = currentStraightEnd
+                    
+                    # normal striaght direction message
+                    newDirections.append({
+                        'startTime': startTime,
+                        'endTime': currentStraightEnd,
+                        'directionIcon': direction,
+                        'description': getDirectionMessage(direction),
+                    })
+                    # Message like "Continue straight for x feet/metre"
+                    newDirections.append({
+                        'startTime': currentStraightEnd,
+                        'endTime': turnNoticeStartTime if nextIsTurn else endTime,
+                        'directionIcon': direction,
+                        'description': getDirectionMessage(direction, True),
+                        'distance': Decimal(str(distance)),
+                    })
+
+                    if nextIsTurn:
+                        turnInDistance = CalculationMetrics.DURATION_BEFORE_TURN_NOTICE * CalculationMetrics.AVG_DISTANCE_PER_SEC_FT
+                        # Message like "Continue straight for x feet/metre"
+                        newDirections.append({
+                            'startTime': turnNoticeStartTime,
+                            'endTime': endTime,
+                            'directionIcon': data[index+1]['directionIcon'],
+                            'description': getDirectionMessage(data[index+1]['directionIcon'], True),
+                            'distance': Decimal(turnInDistance),
+                        })
+                else:
+                    newDirections.append(directionInstance)
+            else:
+                newDirections.append(directionInstance)
+        return newDirections
+    except Exception as e:
+        logging.info('Error in enhanceDirectionsWithDistance')
         logging.info(e)
         return False
 
@@ -228,6 +289,7 @@ def directionDetection(file_name):
                 el['description'] = getDirectionMessage(resDirection)
             
             finalOutput = finalDirectionGrouping(finalOutput)
+            finalOutput = enhanceDirectionsWithDistance(finalOutput)
             return finalOutput
     except Exception as e:
         logging.info('Error in directionDetection fn')
