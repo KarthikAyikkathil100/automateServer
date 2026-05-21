@@ -210,12 +210,12 @@ def enhanceDirectionsWithDistance(data: List[DirectionData]) -> List[DirectionDa
 
                     if nextIsTurn:
                         turnInDistance = CalculationMetrics.DURATION_BEFORE_TURN_NOTICE * CalculationMetrics.AVG_DISTANCE_PER_SEC_FT
-                        # Message like "Continue straight for x feet/metre"
+                        # Message like "In x ft/mt turn left"
                         newDirections.append({
                             'startTime': turnNoticeStartTime,
                             'endTime': endTime,
-                            'directionIcon': data[index+1]['directionIcon'],
-                            'description': getDirectionMessage(data[index+1]['directionIcon'], True),
+                            'directionIcon': direction,
+                            'description': getDirectionMessage(data[index + 1]['directionIcon'], True),
                             'distance': Decimal(turnInDistance),
                         })
                 else:
