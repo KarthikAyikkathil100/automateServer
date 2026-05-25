@@ -181,31 +181,28 @@ def enhanceDirectionsWithDistance(data: List[DirectionData]) -> List[DirectionDa
             direction = directionInstance['directionIcon']
             if direction == directionTypes.get('STRAIGHT'):
                 if duration >= CalculationMetrics.TRIGGER_DISTANCE_CAPTION_ON_DURATION:
-                    currentStraightEnd = startTime + CalculationMetrics.TRIGGER_DISTANCE_CAPTION_AFTER
+                    currentStraightEnd = startTime + CalculationMetrics.DISTANCE_CAPTION_DISPLAY_DUREATION
                     nextIsTurn = False
                     if index + 1 < len(data):
                         nextIsTurn = checkIfTurn(data[index + 1]['directionIcon'])
 
                     turnNoticeStartTime = endTime - CalculationMetrics.DURATION_BEFORE_TURN_NOTICE
-                    straightCaptionEnd = turnNoticeStartTime if nextIsTurn else endTime
-                    distance = (straightCaptionEnd - currentStraightEnd) * CalculationMetrics.AVG_DISTANCE_PER_SEC_FT
-                    directionInstance['description'] = getDirectionMessage(direction, True)
-                    directionInstance['endTime'] = currentStraightEnd
+                    distance = (duration) * CalculationMetrics.AVG_DISTANCE_PER_SEC_FT
                     
-                    # normal striaght direction message
+                    # Message like "Continue straight for x feet/metre"
                     newDirections.append({
                         'startTime': startTime,
                         'endTime': currentStraightEnd,
                         'directionIcon': direction,
-                        'description': getDirectionMessage(direction),
+                        'description': getDirectionMessage(direction, True),
+                        'distance': Decimal(str(distance)),
                     })
-                    # Message like "Continue straight for x feet/metre"
+                    # normal striaght direction message
                     newDirections.append({
                         'startTime': currentStraightEnd,
                         'endTime': turnNoticeStartTime if nextIsTurn else endTime,
                         'directionIcon': direction,
-                        'description': getDirectionMessage(direction, True),
-                        'distance': Decimal(str(distance)),
+                        'description': getDirectionMessage(direction),
                     })
 
                     if nextIsTurn:

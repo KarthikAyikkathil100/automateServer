@@ -274,8 +274,9 @@ def arrowAttachJob(data, route_data):
             
         new_route = False
         existingSourceCaption = route_data['sourceCaption' if (is_diy_route_req == False and is_diy_segment_req == False) else 'directions']
-        showAnimationsChanged = None if (is_diy_route_req == False and is_diy_segment_req == False) else route_data.get('showAnimationsChanged', False)
-        reRunArrowAttach = None if (is_diy_route_req == False and is_diy_segment_req == False) else route_data.get('reRunArrowAttach', True)
+        showAnimationsChanged = route_data.get('showAnimationsChanged', False) if (is_diy_route_req == False and is_diy_segment_req == False) else None
+        reRunArrowAttach = route_data.get('reRunArrowAttach', True) if (is_diy_route_req == False and is_diy_segment_req == False) else None
+        
         total_duration = route_data.get('totalDuration', None)
         if total_duration == 0:
             total_duration = None
