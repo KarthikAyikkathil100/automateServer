@@ -25,21 +25,27 @@ directionMessages = {
 }
 
 distantDirectionMessages = {
-    'STRAIGHT': ['Go straight for :{distance}', 'Continue forward for :{distance}', 'Keep going straight for :{distance}', 'Proceed forward for :{distance}', 'Walk straight ahead for :{distance}', 'Head forward for :{distance}'],
-    'LEFT': ['In :{distance} turn left', 'In :{distance} take a left', 'In :{distance} make a left turn', 'In :{distance} go left', 'In :{distance} turn to your left', 'In :{distance} head left', 'In :{distance} move left'],
-    'S_LEFT': ['In :{distance} turn slight left', 'In :{distance} take a slight left', 'In :{distance} make a gentle left turn', 'In :{distance} drift left slightly', 'In :{distance} lean a little left', 'In :{distance} gradually turn left'],
-    'RIGHT': ['In :{distance} turn right', 'In :{distance} take a right', 'In :{distance} make a right turn', 'In :{distance} go right', 'In :{distance} turn to your right', 'In :{distance} head right', 'In :{distance} move right'],
-    'S_RIGHT': ['Turn slight right for :{distance}', 'Take a slight right for :{distance}', 'Make a gentle right turn for :{distance}', 'Drift right slightly for :{distance}', 'Lean a little right for :{distance}', 'Gradually turn right for :{distance}'],
-    'END': ['In :{distance} destination arrived', 'In :{distance} you\'ve arrived', 'In :{distance} destination reached', 'In :{distance} you\'re at your destination'],
+    'STRAIGHT': ['Go straight for approximately :{distance}', 'Continue forward for approximately :{distance}', 'Keep going straight for approximately :{distance}', 'Proceed forward for approximately :{distance}', 'Walk straight ahead for approximately :{distance}', 'Head forward for approximately :{distance}'],
+    'LEFT': ['In approximately :{distance} turn left', 'In approximately :{distance} take a left', 'In approximately :{distance} make a left turn', 'In approximately :{distance} go left', 'In approximately :{distance} turn to your left', 'In approximately :{distance} head left', 'In approximately :{distance} move left'],
+    'S_LEFT': ['In approximately :{distance} turn slight left', 'In approximately :{distance} take a slight left', 'In approximately :{distance} make a gentle left turn', 'In approximately :{distance} drift left slightly', 'In approximately :{distance} lean a little left', 'In approximately :{distance} gradually turn left'],
+    'RIGHT': ['In approximately :{distance} turn right', 'In approximately :{distance} take a right', 'In approximately :{distance} make a right turn', 'In approximately :{distance} go right', 'In approximately :{distance} turn to your right', 'In approximately :{distance} head right', 'In approximately :{distance} move right'],
+    'S_RIGHT': ['Turn slight right for approximately :{distance}', 'Take a slight right for approximately :{distance}', 'Make a gentle right turn for approximately :{distance}', 'Drift right slightly for approximately :{distance}', 'Lean a little right for approximately :{distance}', 'Gradually turn right for approximately :{distance}'],
+    'END': ['In approximately :{distance} destination arrived', 'In approximately :{distance} you\'ve arrived', 'In approximately :{distance} destination reached', 'In approximately :{distance} you\'re at your destination'],
 }
 
 def getDirectionMessage(direction: str, getDistantMsg: bool = False) -> str:
     try:
+        # Accept both canonical values (SLIGHT_LEFT/RIGHT) and legacy map keys (S_LEFT/RIGHT)
+        normalized_direction = {
+            directionTypes['S_LEFT']: 'S_LEFT',
+            directionTypes['S_RIGHT']: 'S_RIGHT',
+        }.get(direction, direction)
+
         validDirections = list((distantDirectionMessages if getDistantMsg else directionMessages).keys())
-        if direction not in validDirections:
+        if normalized_direction not in validDirections:
             return 'Unknown direction'
         
-        validMessages = (distantDirectionMessages if getDistantMsg else directionMessages).get(direction)
+        validMessages = (distantDirectionMessages if getDistantMsg else directionMessages).get(normalized_direction)
         randomIndex = random.randrange(0, len(validMessages))
         return validMessages[randomIndex]
     except Exception as e:

@@ -195,7 +195,7 @@ def enhanceDirectionsWithDistance(data: List[DirectionData]) -> List[DirectionDa
                         'endTime': currentStraightEnd,
                         'directionIcon': direction,
                         'description': getDirectionMessage(direction, True),
-                        'distance': Decimal(str(distance)),
+                        'distance': Decimal(str(round(distance / 10) * 10)),
                     })
                     # normal striaght direction message
                     newDirections.append({
