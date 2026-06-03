@@ -32,7 +32,7 @@ directionTypes = {
 }
 
 directionMessages = {
-    'STRAIGHT': 'Go straight',
+    'STRAIGHT': 'Continue forward',
     'LEFT': 'Turn left',
     'SLIGHT_LEFT': 'Turn slight left',
     'RIGHT': 'Turn right',
