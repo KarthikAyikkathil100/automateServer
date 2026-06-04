@@ -14,19 +14,19 @@ directionTypes = {
 
 directionMessages = {
     'STRAIGHT': ['Continue forward', 'Keep going straight', 'Proceed forward', 'Walk straight ahead', 'Head forward'],
-    'LEFT': ['Turn left', 'Take a left', 'Make a left turn', 'Turn to your left', 'Head left', 'Move left'],
+    'LEFT': ['Turn left', 'Take a left', 'Make a left turn', 'Turn to your left', 'Head left'],
     'S_LEFT': ['Turn slight left', 'Take a slight left', 'Make a gentle left turn', 'Drift left slightly', 'Lean a little left', 'Gradually turn left'],
-    'RIGHT': ['Turn right', 'Take a right', 'Make a right turn', 'Turn to your right', 'Head right', 'Move right'],
+    'RIGHT': ['Turn right', 'Take a right', 'Make a right turn', 'Turn to your right', 'Head right'],
     'S_RIGHT': ['Turn slight right', 'Take a slight right', 'Make a gentle right turn', 'Drift right slightly', 'Lean a little right', 'Gradually turn right'],
     'END': ['Destination arrived', 'You\'ve arrived', 'Destination reached', 'You\'re at your destination'],
 }
 
 distantDirectionMessages = {
     'STRAIGHT': ['Continue forward for approximately :{distance}', 'Keep going straight for approximately :{distance}', 'Proceed forward for approximately :{distance}', 'Walk straight ahead for approximately :{distance}', 'Head forward for approximately :{distance}'],
-    'LEFT': ['In approximately :{distance} turn left', 'In approximately :{distance} take a left', 'In approximately :{distance} make a left turn', 'In approximately :{distance} turn to your left', 'In approximately :{distance} head left', 'In approximately :{distance} move left'],
+    'LEFT': ['In approximately :{distance} turn left', 'In approximately :{distance} take a left', 'In approximately :{distance} make a left turn', 'In approximately :{distance} turn to your left', 'In approximately :{distance} head left'],
     'S_LEFT': ['In approximately :{distance} turn slight left', 'In approximately :{distance} take a slight left', 'In approximately :{distance} make a gentle left turn', 'In approximately :{distance} drift left slightly', 'In approximately :{distance} lean a little left', 'In approximately :{distance} gradually turn left'],
-    'RIGHT': ['In approximately :{distance} turn right', 'In approximately :{distance} take a right', 'In approximately :{distance} make a right turn', 'In approximately :{distance} turn to your right', 'In approximately :{distance} head right', 'In approximately :{distance} move right'],
-    'S_RIGHT': ['Turn slight right for approximately :{distance}', 'Take a slight right for approximately :{distance}', 'Make a gentle right turn for approximately :{distance}', 'Drift right slightly for approximately :{distance}', 'Lean a little right for approximately :{distance}', 'Gradually turn right for approximately :{distance}'],
+    'RIGHT': ['In approximately :{distance} turn right', 'In approximately :{distance} take a right', 'In approximately :{distance} make a right turn', 'In approximately :{distance} turn to your right', 'In approximately :{distance} head right'],
+    'S_RIGHT': ['Turn slight right in approximately :{distance}', 'Take a slight right in approximately :{distance}', 'Make a gentle right turn in approximately :{distance}', 'Drift right slightly in approximately :{distance}', 'Lean a little right in approximately :{distance}', 'Gradually turn right in approximately :{distance}'],
     'END': ['In approximately :{distance} destination arrived', 'In approximately :{distance} you\'ve arrived', 'In approximately :{distance} destination reached', 'In approximately :{distance} you\'re at your destination'],
 }
 
