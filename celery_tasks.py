@@ -361,7 +361,7 @@ def arrowAttachJob(data, route_data):
             raise Exception('DB update error')
         if reRunArrowAttach == True:
             update_data = {
-                'processedVideoLink': new_link,
+                ('processedVideoLink' if is_diy_route_req == True or is_diy_segment_req == True else 'newAnimationVideoLink'): new_link,
                 'processStatus': PROCESS_STATUS.ARROW_ATTACHMENT_SUCCESS
             }
             if is_diy_route_req == False and is_diy_segment_req == False:
