@@ -1,0 +1,347 @@
+{
+  "video": "/home/mind/projects/RoutemeAutomation/blurred/mi.mp4",
+  "file_name": "mi.mp4",
+  "start_time": "2026-08-07T17:42:17",
+  "end_time": "2026-08-07T17:49:31",
+  "elapsed_seconds": 434.11,
+  "direction_count": 56,
+  "directions": [
+    {
+      "startTime": 0,
+      "endTime": 16,
+      "directionIcon": "STRAIGHT",
+      "description": "Head forward"
+    },
+    {
+      "startTime": 16,
+      "endTime": 21,
+      "directionIcon": "LEFT",
+      "description": "Head left"
+    },
+    {
+      "startTime": 21,
+      "endTime": 27,
+      "directionIcon": "STRAIGHT",
+      "description": "Continue forward"
+    },
+    {
+      "startTime": 27,
+      "endTime": 28,
+      "directionIcon": "RIGHT",
+      "description": "Turn right"
+    },
+    {
+      "startTime": 28,
+      "endTime": 29,
+      "directionIcon": "LEFT",
+      "description": "Head left"
+    },
+    {
+      "startTime": 29,
+      "endTime": 31,
+      "directionIcon": "STRAIGHT",
+      "description": "Proceed forward"
+    },
+    {
+      "startTime": 31,
+      "endTime": 32,
+      "directionIcon": "RIGHT",
+      "description": "Turn right"
+    },
+    {
+      "startTime": 32,
+      "endTime": 45,
+      "directionIcon": "STRAIGHT",
+      "description": "Proceed forward"
+    },
+    {
+      "startTime": 45,
+      "endTime": 46,
+      "directionIcon": "LEFT",
+      "description": "Take a left"
+    },
+    {
+      "startTime": 46,
+      "endTime": 55,
+      "directionIcon": "STRAIGHT",
+      "description": "Walk straight ahead"
+    },
+    {
+      "startTime": 55,
+      "endTime": 69,
+      "directionIcon": "LEFT",
+      "description": "Take a left"
+    },
+    {
+      "startTime": 69,
+      "endTime": 70,
+      "directionIcon": "STRAIGHT",
+      "description": "Head forward"
+    },
+    {
+      "startTime": 70,
+      "endTime": 71,
+      "directionIcon": "RIGHT",
+      "description": "Turn right"
+    },
+    {
+      "startTime": 71,
+      "endTime": 72,
+      "directionIcon": "STRAIGHT",
+      "description": "Walk straight ahead"
+    },
+    {
+      "startTime": 72,
+      "endTime": 73,
+      "directionIcon": "LEFT",
+      "description": "Head left"
+    },
+    {
+      "startTime": 73,
+      "endTime": 77,
+      "directionIcon": "STRAIGHT",
+      "description": "Keep going straight"
+    },
+    {
+      "startTime": 77,
+      "endTime": 91,
+      "directionIcon": "RIGHT",
+      "description": "Turn right"
+    },
+    {
+      "startTime": 91,
+      "endTime": 95,
+      "directionIcon": "LEFT",
+      "description": "Take a left"
+    },
+    {
+      "startTime": 95,
+      "endTime": 104,
+      "directionIcon": "STRAIGHT",
+      "description": "Continue forward"
+    },
+    {
+      "startTime": 104,
+      "endTime": 105,
+      "directionIcon": "RIGHT",
+      "description": "Make a right turn"
+    },
+    {
+      "startTime": 105,
+      "endTime": 119,
+      "directionIcon": "STRAIGHT",
+      "description": "Keep going straight"
+    },
+    {
+      "startTime": 119,
+      "endTime": 129,
+      "directionIcon": "LEFT",
+      "description": "Head left"
+    },
+    {
+      "startTime": 129,
+      "endTime": 132,
+      "directionIcon": "STRAIGHT",
+      "description": "Head forward"
+    },
+    {
+      "startTime": 132,
+      "endTime": 134,
+      "directionIcon": "RIGHT",
+      "description": "Make a right turn"
+    },
+    {
+      "startTime": 134,
+      "endTime": 136,
+      "directionIcon": "STRAIGHT",
+      "description": "Keep going straight"
+    },
+    {
+      "startTime": 136,
+      "endTime": 139,
+      "directionIcon": "LEFT",
+      "description": "Take a left"
+    },
+    {
+      "startTime": 139,
+      "endTime": 142,
+      "directionIcon": "STRAIGHT",
+      "description": "Keep going straight"
+    },
+    {
+      "startTime": 142,
+      "endTime": 143,
+      "directionIcon": "RIGHT",
+      "description": "Turn right"
+    },
+    {
+      "startTime": 143,
+      "endTime": 151,
+      "directionIcon": "STRAIGHT",
+      "description": "Keep going straight"
+    },
+    {
+      "startTime": 151,
+      "endTime": 152,
+      "directionIcon": "LEFT",
+      "description": "Turn left"
+    },
+    {
+      "startTime": 152,
+      "endTime": 160,
+      "directionIcon": "STRAIGHT",
+      "description": "Walk straight ahead"
+    },
+    {
+      "startTime": 160,
+      "endTime": 164,
+      "directionIcon": "RIGHT",
+      "description": "Take a right"
+    },
+    {
+      "startTime": 164,
+      "endTime": 172,
+      "directionIcon": "LEFT",
+      "description": "Turn left"
+    },
+    {
+      "startTime": 172,
+      "endTime": 177,
+      "directionIcon": "STRAIGHT",
+      "description": "Walk straight ahead"
+    },
+    {
+      "startTime": 177,
+      "endTime": 178,
+      "directionIcon": "RIGHT",
+      "description": "Turn to your right"
+    },
+    {
+      "startTime": 178,
+      "endTime": 182,
+      "directionIcon": "STRAIGHT",
+      "description": "Walk straight ahead"
+    },
+    {
+      "startTime": 182,
+      "endTime": 233,
+      "directionIcon": "LEFT",
+      "description": "Take a left"
+    },
+    {
+      "startTime": 233,
+      "endTime": 234,
+      "directionIcon": "STRAIGHT",
+      "description": "Proceed forward"
+    },
+    {
+      "startTime": 234,
+      "endTime": 259,
+      "directionIcon": "RIGHT",
+      "description": "Take a right"
+    },
+    {
+      "startTime": 259,
+      "endTime": 295,
+      "directionIcon": "STRAIGHT",
+      "description": "Continue forward"
+    },
+    {
+      "startTime": 295,
+      "endTime": 296,
+      "directionIcon": "LEFT",
+      "description": "Turn to your left"
+    },
+    {
+      "startTime": 296,
+      "endTime": 303,
+      "directionIcon": "STRAIGHT",
+      "description": "Proceed forward"
+    },
+    {
+      "startTime": 303,
+      "endTime": 304,
+      "directionIcon": "RIGHT",
+      "description": "Turn right"
+    },
+    {
+      "startTime": 304,
+      "endTime": 314,
+      "directionIcon": "STRAIGHT",
+      "description": "Head forward"
+    },
+    {
+      "startTime": 314,
+      "endTime": 315,
+      "directionIcon": "RIGHT",
+      "description": "Make a right turn"
+    },
+    {
+      "startTime": 315,
+      "endTime": 321,
+      "directionIcon": "STRAIGHT",
+      "description": "Continue forward"
+    },
+    {
+      "startTime": 321,
+      "endTime": 322,
+      "directionIcon": "LEFT",
+      "description": "Turn to your left"
+    },
+    {
+      "startTime": 322,
+      "endTime": 341,
+      "directionIcon": "STRAIGHT",
+      "description": "Head forward"
+    },
+    {
+      "startTime": 341,
+      "endTime": 345,
+      "directionIcon": "SLIGHT_LEFT",
+      "description": "Make a gentle left turn"
+    },
+    {
+      "startTime": 345,
+      "endTime": 359,
+      "directionIcon": "STRAIGHT",
+      "description": "Keep going straight"
+    },
+    {
+      "startTime": 359,
+      "endTime": 365,
+      "directionIcon": "RIGHT",
+      "description": "Take a right"
+    },
+    {
+      "startTime": 365,
+      "endTime": 377,
+      "directionIcon": "STRAIGHT",
+      "description": "Proceed forward"
+    },
+    {
+      "startTime": 377,
+      "endTime": 378,
+      "directionIcon": "RIGHT",
+      "description": "Turn to your right"
+    },
+    {
+      "startTime": 378,
+      "endTime": 398,
+      "directionIcon": "STRAIGHT",
+      "description": "Head forward"
+    },
+    {
+      "startTime": 398,
+      "endTime": 399,
+      "directionIcon": "LEFT",
+      "description": "Turn left"
+    },
+    {
+      "directionIcon": "STRAIGHT",
+      "startTime": 399,
+      "endTime": 401,
+      "message": "Go straight",
+      "description": "Walk straight ahead"
+    }
+  ]
+}

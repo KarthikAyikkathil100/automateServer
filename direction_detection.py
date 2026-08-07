@@ -61,9 +61,8 @@ def prepare_gray(frame):
 
 
 def scaled_flow_thresholds(native_width, flow_width):
-    """Scale classification thresholds for downscale + multi-frame stride."""
-    resize_scale = flow_width / float(native_width) if native_width else 1.0
-    magnitude_scale = resize_scale * FRAME_STRIDE
+    """Scale classification thresholds for downscale only (stride already increases per-sample displacement)."""
+    magnitude_scale = flow_width / float(native_width) if native_width else 1.0
     return (
         DirectionDetectionConfig.BASE_SENSITIVITY * magnitude_scale,
         DirectionDetectionConfig.BASE_SLIGHT_THRESHOLD * magnitude_scale,

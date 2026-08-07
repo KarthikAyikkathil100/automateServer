@@ -19,6 +19,7 @@ import os
 import shutil
 import sys
 import time
+from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
 
@@ -106,7 +107,9 @@ def main() -> int:
     from direction_detection import directionDetection
 
     logging.info("Starting direction detection for %s", file_name)
+    start_dt = datetime.now()
     started = time.time()
+    print(f"Start time: {start_dt.strftime('%Y-%m-%d %H:%M:%S')}")
     try:
         result = directionDetection(file_name)
     finally:
@@ -118,7 +121,10 @@ def main() -> int:
             except OSError as e:
                 logging.warning("Could not remove temporary file %s: %s", link_path, e)
 
+    end_dt = datetime.now()
     elapsed = time.time() - started
+    print(f"End time:   {end_dt.strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"Elapsed:    {elapsed:.1f}s")
 
     if result is False or result is None:
         logging.error("directionDetection failed (elapsed %.1fs)", elapsed)
@@ -127,6 +133,8 @@ def main() -> int:
     payload = {
         "video": str(video_path.resolve()),
         "file_name": file_name,
+        "start_time": start_dt.isoformat(timespec="seconds"),
+        "end_time": end_dt.isoformat(timespec="seconds"),
         "elapsed_seconds": round(elapsed, 2),
         "direction_count": len(result),
         "directions": result,
