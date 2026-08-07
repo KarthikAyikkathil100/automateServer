@@ -150,7 +150,8 @@ def check_time_validity(time: int) -> bool:
 
 def sliding_window(data, fps):
     try:
-        chunks = get_chunks(data, int(fps * 1))
+        chunk_size = max(1, int(fps * 1))
+        chunks = get_chunks(data, chunk_size)
         final_data = []
         for chunk in chunks:
             verdict_meta = get_verdict(chunk)
@@ -163,10 +164,12 @@ def sliding_window(data, fps):
         print('Error in sliding_window')
         print(e)
 
-def sliding_window_main(master, file_name, fps, total_frames):
+def sliding_window_main(master, file_name, fps, total_frames, frame_stride=1):
     try:
         data = copy(master)
-        finalData = sliding_window(data, fps)
+        # With frame stride, samples-per-second drops; keep ~1s majority windows
+        samples_per_sec = fps / float(frame_stride) if frame_stride else fps
+        finalData = sliding_window(data, samples_per_sec)
         outputData = process_sliding_window_output(finalData)
         if outputData is None:
             outputData = []

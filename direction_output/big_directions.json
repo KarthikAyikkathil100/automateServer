@@ -1,0 +1,159 @@
+{
+  "video": "/home/mind/projects/RoutemeAutomation/blurred/big.mp4",
+  "file_name": "big.mp4",
+  "elapsed_seconds": 340.74,
+  "direction_count": 24,
+  "directions": [
+    {
+      "startTime": 0,
+      "endTime": 8,
+      "directionIcon": "STRAIGHT",
+      "description": "Proceed forward"
+    },
+    {
+      "startTime": 8,
+      "endTime": 9,
+      "directionIcon": "SLIGHT_RIGHT",
+      "description": "Lean a little right"
+    },
+    {
+      "startTime": 9,
+      "endTime": 19,
+      "directionIcon": "STRAIGHT",
+      "description": "Continue forward for approximately :{distance}",
+      "distance": 290.0
+    },
+    {
+      "startTime": 19,
+      "endTime": 65,
+      "directionIcon": "STRAIGHT",
+      "description": "Walk straight ahead"
+    },
+    {
+      "startTime": 65,
+      "endTime": 73,
+      "directionIcon": "STRAIGHT",
+      "description": "Gradually turn right in approximately :{distance}",
+      "distance": 36.0
+    },
+    {
+      "startTime": 73,
+      "endTime": 74,
+      "directionIcon": "SLIGHT_RIGHT",
+      "description": "Make a gentle right turn"
+    },
+    {
+      "startTime": 74,
+      "endTime": 107,
+      "directionIcon": "STRAIGHT",
+      "description": "Proceed forward"
+    },
+    {
+      "startTime": 107,
+      "endTime": 110,
+      "directionIcon": "SLIGHT_RIGHT",
+      "description": "Drift right slightly"
+    },
+    {
+      "startTime": 110,
+      "endTime": 120,
+      "directionIcon": "STRAIGHT",
+      "description": "Proceed forward for approximately :{distance}",
+      "distance": 860.0
+    },
+    {
+      "startTime": 120,
+      "endTime": 293,
+      "directionIcon": "STRAIGHT",
+      "description": "Walk straight ahead"
+    },
+    {
+      "startTime": 293,
+      "endTime": 301,
+      "directionIcon": "STRAIGHT",
+      "description": "Drift right slightly in approximately :{distance}",
+      "distance": 36.0
+    },
+    {
+      "startTime": 301,
+      "endTime": 302,
+      "directionIcon": "SLIGHT_RIGHT",
+      "description": "Gradually turn right"
+    },
+    {
+      "startTime": 302,
+      "endTime": 313,
+      "directionIcon": "STRAIGHT",
+      "description": "Keep going straight"
+    },
+    {
+      "startTime": 313,
+      "endTime": 315,
+      "directionIcon": "SLIGHT_LEFT",
+      "description": "Turn slight left"
+    },
+    {
+      "startTime": 315,
+      "endTime": 325,
+      "directionIcon": "STRAIGHT",
+      "description": "Continue forward for approximately :{distance}",
+      "distance": 680.0
+    },
+    {
+      "startTime": 325,
+      "endTime": 458,
+      "directionIcon": "STRAIGHT",
+      "description": "Keep going straight"
+    },
+    {
+      "startTime": 458,
+      "endTime": 466,
+      "directionIcon": "STRAIGHT",
+      "description": "Drift right slightly in approximately :{distance}",
+      "distance": 36.0
+    },
+    {
+      "startTime": 466,
+      "endTime": 467,
+      "directionIcon": "SLIGHT_RIGHT",
+      "description": "Take a slight right"
+    },
+    {
+      "startTime": 467,
+      "endTime": 469,
+      "directionIcon": "STRAIGHT",
+      "description": "Keep going straight"
+    },
+    {
+      "startTime": 469,
+      "endTime": 470,
+      "directionIcon": "SLIGHT_RIGHT",
+      "description": "Take a slight right"
+    },
+    {
+      "startTime": 470,
+      "endTime": 481,
+      "directionIcon": "STRAIGHT",
+      "description": "Head forward"
+    },
+    {
+      "startTime": 481,
+      "endTime": 482,
+      "directionIcon": "SLIGHT_LEFT",
+      "description": "Turn slight left"
+    },
+    {
+      "startTime": 482,
+      "endTime": 485,
+      "directionIcon": "STRAIGHT",
+      "description": "Walk straight ahead"
+    },
+    {
+      "directionIcon": "END",
+      "message": "Destination arrived",
+      "startTime": 485,
+      "endTime": 486,
+      "description": "You've arrived"
+    }
+  ]
+}
