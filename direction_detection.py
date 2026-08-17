@@ -181,13 +181,14 @@ def process_vid_segment(meta):
         logging.info(e)
 
 
-class DirectionData(TypedDict):
+class DirectionData(TypedDict, total=False):
     startTime: int
     endTime: int
     directionIcon: str
     message: str
     description: str
     distance: Decimal
+    steps: Decimal
 
 def finalDirectionGrouping(data: List[DirectionData]) -> List[DirectionData]:
     try:
@@ -215,7 +216,10 @@ def finalDirectionGrouping(data: List[DirectionData]) -> List[DirectionData]:
         logging.info(e)
         return False
 
-def enhanceDirectionsWithDistance(data: List[DirectionData]) -> List[DirectionData]:
+def round_to_nearest_ten(value):
+    return round(value / 10) * 10
+
+def enhanceDirectionsWithDistance(data: List[DirectionData], captions_having_steps: bool = False) -> List[DirectionData]:
     try:
         newDirections : List[DirectionData] = []
         for index, directionInstance in enumerate(data):
@@ -231,16 +235,20 @@ def enhanceDirectionsWithDistance(data: List[DirectionData]) -> List[DirectionDa
                         nextIsTurn = checkIfTurn(data[index + 1]['directionIcon'])
 
                     turnNoticeStartTime = endTime - CalculationMetrics.DURATION_BEFORE_TURN_NOTICE
-                    distance = (duration) * CalculationMetrics.AVG_DISTANCE_PER_SEC_FT
+                    distance = duration * CalculationMetrics.AVG_DISTANCE_PER_SEC_FT
                     
-                    # Message like "Continue straight for x feet/metre"
-                    newDirections.append({
+                    straight_distance_caption = {
                         'startTime': startTime,
                         'endTime': currentStraightEnd,
                         'directionIcon': direction,
-                        'description': getDirectionMessage(direction, True),
-                        'distance': Decimal(str(round(distance / 10) * 10)),
-                    })
+                        'description': getDirectionMessage(direction, True, captions_having_steps),
+                        'distance': Decimal(str(round_to_nearest_ten(distance))),
+                    }
+                    if captions_having_steps:
+                        straight_distance_caption['steps'] = Decimal(str(round_to_nearest_ten(
+                            duration * CalculationMetrics.AVG_STEPS_PER_SEC_FT
+                        )))
+                    newDirections.append(straight_distance_caption)
                     # normal striaght direction message
                     newDirections.append({
                         'startTime': currentStraightEnd,
@@ -251,14 +259,18 @@ def enhanceDirectionsWithDistance(data: List[DirectionData]) -> List[DirectionDa
 
                     if nextIsTurn:
                         turnInDistance = CalculationMetrics.DURATION_BEFORE_TURN_NOTICE * CalculationMetrics.AVG_DISTANCE_PER_SEC_FT
-                        # Message like "In x ft/mt turn left"
-                        newDirections.append({
+                        turn_notice_caption = {
                             'startTime': turnNoticeStartTime,
                             'endTime': endTime,
                             'directionIcon': direction,
-                            'description': getDirectionMessage(data[index + 1]['directionIcon'], True),
+                            'description': getDirectionMessage(data[index + 1]['directionIcon'], True, captions_having_steps),
                             'distance': Decimal(turnInDistance),
-                        })
+                        }
+                        if captions_having_steps:
+                            turn_notice_caption['steps'] = Decimal(str(round_to_nearest_ten(
+                                CalculationMetrics.DURATION_BEFORE_TURN_NOTICE * CalculationMetrics.AVG_STEPS_PER_SEC_FT
+                            )))
+                        newDirections.append(turn_notice_caption)
                 else:
                     newDirections.append(directionInstance)
             else:
@@ -269,7 +281,7 @@ def enhanceDirectionsWithDistance(data: List[DirectionData]) -> List[DirectionDa
         logging.info(e)
         return False
 
-def directionDetection(file_name):
+def directionDetection(file_name, captions_having_steps: bool = False):
     # try:
     #     fn = sys.argv[1]
     # except IndexError:
@@ -336,7 +348,7 @@ def directionDetection(file_name):
                 el['description'] = getDirectionMessage(resDirection)
             
             finalOutput = finalDirectionGrouping(finalOutput)
-            finalOutput = enhanceDirectionsWithDistance(finalOutput)
+            finalOutput = enhanceDirectionsWithDistance(finalOutput, captions_having_steps)
             return finalOutput
     except Exception as e:
         logging.info('Error in directionDetection fn')
