@@ -12,3 +12,4 @@ __pycache__
 images/*
 colored_gifs/*
 out/
+direction_output/*
