@@ -264,7 +264,7 @@ def enhanceDirectionsWithDistance(data: List[DirectionData], captions_having_ste
                             'endTime': endTime,
                             'directionIcon': direction,
                             'description': getDirectionMessage(data[index + 1]['directionIcon'], True, captions_having_steps),
-                            'distance': Decimal(turnInDistance),
+                            'distance': Decimal(str(round_to_nearest_ten(turnInDistance))),
                         }
                         if captions_having_steps:
                             turn_notice_caption['steps'] = Decimal(str(round_to_nearest_ten(

@@ -1123,7 +1123,10 @@ def directionDetectionAPI(data):
             return
         # ---- End Idempotency check ---- 
 
-        req_attributes = ['videoURL']
+        req_attributes = [
+            'videoURL',
+            'locationId' if (is_diy_route_req == True or is_diy_segment_req == True) else 'locId',
+        ]
         if is_diy_route_req == False and is_diy_segment_req == False:
             req_attributes.append('isPrivate')
         route_data = get_record(
