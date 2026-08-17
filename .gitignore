@@ -11,5 +11,6 @@ __pycache__
 *.js
 images/*
 colored_gifs/*
+direction_output/*
 out/*
 test_direction_detection.py

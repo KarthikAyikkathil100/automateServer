@@ -10,7 +10,7 @@ import video
 import json  # Importing the json module
 from datetime import datetime
 import logging
-from constants import CalculationMetrics
+from constants import CalculationMetrics, DirectionDetectionConfig
 from sliding_window import sliding_window_main, getDirectionMessage
 from decimal import Decimal
 from typing import List, TypedDict
@@ -41,6 +41,32 @@ directionMessages = {
 }
 poolSize = cpuCount
 process_pool = ProcessPoolExecutor(poolSize)
+
+FRAME_STRIDE = DirectionDetectionConfig.FRAME_STRIDE
+FLOW_MAX_WIDTH = DirectionDetectionConfig.FLOW_MAX_WIDTH
+
+
+def prepare_gray(frame):
+    """Convert to grayscale and downscale for faster Farneback."""
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    height, width = gray.shape[:2]
+    if width > FLOW_MAX_WIDTH:
+        scale = FLOW_MAX_WIDTH / float(width)
+        gray = cv2.resize(
+            gray,
+            (FLOW_MAX_WIDTH, max(1, int(round(height * scale)))),
+            interpolation=cv2.INTER_AREA,
+        )
+    return gray
+
+
+def scaled_flow_thresholds(native_width, flow_width):
+    """Scale classification thresholds for downscale only (stride already increases per-sample displacement)."""
+    magnitude_scale = flow_width / float(native_width) if native_width else 1.0
+    return (
+        DirectionDetectionConfig.BASE_SENSITIVITY * magnitude_scale,
+        DirectionDetectionConfig.BASE_SLIGHT_THRESHOLD * magnitude_scale,
+    )
 
 def getFrameSplits(nChunks, totalFrames, routeFramesParallelProcess):
     res = []
@@ -99,37 +125,55 @@ def process_vid_segment(meta):
         cam.set(cv2.CAP_PROP_POS_FRAMES, frame_start)
 
         _ret, prev = cam.read()
-        prevgray = cv2.cvtColor(prev, cv2.COLOR_BGR2GRAY)
+        if not _ret or prev is None:
+            return {"data": []}
+
+        native_width = prev.shape[1]
+        prevgray = prepare_gray(prev)
+        flow_width = prevgray.shape[1]
+        sensitivity, slight_threshold = scaled_flow_thresholds(native_width, flow_width)
         iters = frame_start
 
         direction_data = {"data": []}  # Dictionary to store the list of timestamp and direction data
         while iters < frame_end:
+            # Advance FRAME_STRIDE frames; grab() skips decode for intermediate frames
+            for _ in range(FRAME_STRIDE - 1):
+                if iters + 1 > frame_end:
+                    return direction_data
+                if not cam.grab():
+                    return direction_data
+                iters += 1
 
             iters += 1
             _ret, img = cam.read()
             if not _ret:
                 break
-            # frame_count += 1
-            
+
             timestamp = iters / fps
-
-            # # Skip every 3rd frame (Need to check the timing of completion and accuracy)
-            # if frame_count % 3 == 0:
-            #     continue
-
-                
-            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-            window_size = 15 # default was 15
-            flow = cv2.calcOpticalFlowFarneback(prevgray, gray, None, 0.5, 3, window_size, 3, 5, 1.2, 0)
+            gray = prepare_gray(img)
+            flow = cv2.calcOpticalFlowFarneback(
+                prevgray,
+                gray,
+                None,
+                DirectionDetectionConfig.FARNEBACK_PYR_SCALE,
+                DirectionDetectionConfig.FARNEBACK_LEVELS,
+                DirectionDetectionConfig.FARNEBACK_WINSIZE,
+                DirectionDetectionConfig.FARNEBACK_ITERATIONS,
+                DirectionDetectionConfig.FARNEBACK_POLY_N,
+                DirectionDetectionConfig.FARNEBACK_POLY_SIGMA,
+                0,
+            )
             prevgray = gray
 
-            # Classify direction based on flow
-            direction = classify_direction(flow)
-
-            # Store the direction with the timestamp as the key
-            direction_data["data"].append({"timestamp": round(timestamp, 2), "directionIcon": direction})
-            # if iters%100 == 0:
-            #     logging.info(f"Frame: {iters} Timestamp : {timestamp:.2f} Direction: {direction}")
+            direction = classify_direction(
+                flow,
+                sensitivity=sensitivity,
+                slight_threshold=slight_threshold,
+            )
+            direction_data["data"].append({
+                "timestamp": round(timestamp, 2),
+                "directionIcon": direction,
+            })
 
         return direction_data
     except Exception as e:
@@ -275,7 +319,13 @@ def directionDetection(file_name):
         #     json.dump(results, json_file, indent=4)
 
 
-        finalOutput = sliding_window_main(results.get("data", []), file_name, fps, total_frames)
+        finalOutput = sliding_window_main(
+            results.get("data", []),
+            file_name,
+            fps,
+            total_frames,
+            frame_stride=FRAME_STRIDE,
+        )
         if finalOutput == None:
             return False
         else:
