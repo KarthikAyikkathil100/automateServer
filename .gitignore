@@ -11,3 +11,5 @@ __pycache__
 *.js
 images/*
 colored_gifs/*
+out/
+direction_output/*
