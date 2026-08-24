@@ -4,6 +4,7 @@ import random
 
 
 threshold = 90
+STRIDE_MAJORITY_THRESHOLD = 75
 directionTypes = {
     'STRAIGHT': 'STRAIGHT',
     'LEFT': 'LEFT',
@@ -60,8 +61,9 @@ def get_chunks(xs: List[Any], size: int) -> List[List[Any]]:
     return [xs[i:i + size] for i in range(0, len(xs), size)]
 
 
-def get_verdict(data: List[Dict[str, Any]]) -> Dict[str, Any]:
+def get_verdict(data: List[Dict[str, Any]], majority_threshold: int = None) -> Dict[str, Any]:
     try:
+        vote_threshold = threshold if majority_threshold is None else majority_threshold
         direction_meta = {}
         for item in data:
             direction = item.get('directionIcon', '').lower()
@@ -86,15 +88,15 @@ def get_verdict(data: List[Dict[str, Any]]) -> Dict[str, Any]:
                     (direction_counts[0]['directionIcon'].lower() == directionTypes['RIGHT'] and direction_counts[1]['directionIcon'].lower() == directionTypes['S_RIGHT']) or
                     (direction_counts[1]['directionIcon'].lower() == directionTypes['RIGHT'] and direction_counts[0]['directionIcon'].lower() == directionTypes['S_RIGHT'])
                 ):
-                    if (direction_counts[1]['percent'] + direction_counts[0]['percent']) >= threshold:
+                    if (direction_counts[1]['percent'] + direction_counts[0]['percent']) >= vote_threshold:
                         if directionTypes['LEFT'] in direction_counts[0]['directionIcon'].lower():
                             verdict = directionTypes['S_LEFT']
                         elif directionTypes['RIGHT'] in direction_counts[0]['directionIcon'].lower():
                             verdict = directionTypes['S_RIGHT']
-                elif direction_counts[0]['percent'] >= threshold:
+                elif direction_counts[0]['percent'] >= vote_threshold:
                     verdict = direction_counts[0]['directionIcon']
             else:
-                if direction_counts[0]['percent'] >= threshold:
+                if direction_counts[0]['percent'] >= vote_threshold:
                     verdict = direction_counts[0]['directionIcon']
 
         time_gap = {
@@ -145,12 +147,13 @@ def format_seconds(seconds: int) -> str:
 def check_time_validity(time: int) -> bool:
     return not any(el['directionTime'] == time for el in finalData)
 
-def sliding_window(data, fps):
+def sliding_window(data, fps, majority_threshold: int = None):
     try:
-        chunks = get_chunks(data, int(fps * 1))
+        chunk_size = max(1, int(fps * 1))
+        chunks = get_chunks(data, chunk_size)
         final_data = []
         for chunk in chunks:
-            verdict_meta = get_verdict(chunk)
+            verdict_meta = get_verdict(chunk, majority_threshold=majority_threshold)
             if verdict_meta.get('verdict'):
                 pv = process_verdict(chunk, verdict_meta) # TODO: We need to pass finalData as 3rd parameter
                 if pv != None:
@@ -160,15 +163,31 @@ def sliding_window(data, fps):
         print('Error in sliding_window')
         print(e)
 
-def sliding_window_main(master, file_name, fps, total_frames):
+def sliding_window_main(master, file_name, fps, total_frames, frame_stride=1):
     try:
         data = copy(master)
-        finalData = sliding_window(data, fps)
+        # With frame stride, samples-per-second drops; keep ~1s majority windows
+        samples_per_sec = fps / float(frame_stride) if frame_stride else fps
+        # Sparse sampling makes 90% too strict; relax when stride > 1
+        majority_threshold = STRIDE_MAJORITY_THRESHOLD if frame_stride and frame_stride > 1 else threshold
+        finalData = sliding_window(data, samples_per_sec, majority_threshold=majority_threshold)
         # with open(f'multithread-res/{file_name}.txt', 'w', encoding='utf-8') as f:
         #     json.dump({'data': finalData}, f)
         outputData = process_sliding_window_output(finalData)
+        if outputData is None:
+            outputData = []
         prev = None
         straightStubData = []
+        last_second_in_video = round(total_frames/fps) if fps else 0
+
+        if len(outputData) == 0:
+            return [{
+                'directionIcon': 'END',
+                'message': getDirectionMessage('END'),
+                'startTime': 0,
+                'endTime': last_second_in_video,
+            }]
+
         if (outputData[0])['directionIcon'] != 'straight' and (outputData[0])['startTime'] != 0:
             straightStubData.append({
                 'directionIcon': 'straight',
@@ -194,7 +213,6 @@ def sliding_window_main(master, file_name, fps, total_frames):
                     straightStubData.append(el)
             prev = el
         
-        last_second_in_video = round(total_frames/fps)
         if len(straightStubData) > 0 and (straightStubData[-1])['endTime'] > last_second_in_video:
             # Change the endTime of last detected direction to be => last_second_in_video
             (straightStubData[-1])['endTime'] = last_second_in_video
@@ -238,7 +256,7 @@ def sliding_window_main(master, file_name, fps, total_frames):
 
 
         
-        if (straightStubData[0]['startTime'] != 0):
+        if len(straightStubData) > 0 and (straightStubData[0]['startTime'] != 0):
             straightStubData.insert(0, {
                 'directionIcon': 'straight',
                 'message': get_direction_mesage('straight'),
