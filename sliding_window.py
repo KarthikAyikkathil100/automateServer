@@ -31,19 +31,32 @@ distantDirectionMessages = {
     'END': ['In approximately :{distance} destination arrived', 'In approximately :{distance} you\'ve arrived', 'In approximately :{distance} destination reached', 'In approximately :{distance} you\'re at your destination'],
 }
 
+distantDirectionWithStepsMessages = {
+    'STRAIGHT': ['Continue forward for approximately :{distance} or :{steps}', 'Keep going straight for approximately :{distance} or :{steps}', 'Proceed forward for approximately :{distance} or :{steps}', 'Walk straight ahead for approximately :{distance} or :{steps}', 'Head forward for approximately :{distance} or :{steps}'],
+    'LEFT': ['In approximately :{distance} or :{steps} turn left', 'In approximately :{distance} or :{steps} take a left', 'In approximately :{distance} or :{steps} make a left turn', 'In approximately :{distance} or :{steps} turn to your left', 'In approximately :{distance} or :{steps} head left'],
+    'S_LEFT': ['In approximately :{distance} or :{steps} turn slight left', 'In approximately :{distance} or :{steps} take a slight left', 'In approximately :{distance} or :{steps} make a gentle left turn', 'In approximately :{distance} or :{steps} drift left slightly', 'In approximately :{distance} or :{steps} lean a little left', 'In approximately :{distance} or :{steps} gradually turn left'],
+    'RIGHT': ['In approximately :{distance} or :{steps} turn right', 'In approximately :{distance} or :{steps} take a right', 'In approximately :{distance} or :{steps} make a right turn', 'In approximately :{distance} or :{steps} turn to your right', 'In approximately :{distance} or :{steps} head right'],
+    'S_RIGHT': ['Turn slight right in approximately :{distance} or :{steps}', 'Take a slight right in approximately :{distance} or :{steps}', 'Make a gentle right turn in approximately :{distance} or :{steps}', 'Drift right slightly in approximately :{distance} or :{steps}', 'Lean a little right in approximately :{distance} or :{steps}', 'Gradually turn right in approximately :{distance} or :{steps}'],
+    'END': ['In approximately :{distance} or :{steps} destination arrived', 'In approximately :{distance} or :{steps} you\'ve arrived', 'In approximately :{distance} or :{steps} destination reached', 'In approximately :{distance} or :{steps} you\'re at your destination'],
+}
 
-def getDirectionMessage(direction: str, getDistantMsg: bool = False) -> str:
+def getDirectionMessage(direction: str, getDistantMsg: bool = False, addSteps: bool = False) -> str:
     try:
         normalized_direction = {
             directionTypes['S_LEFT']: 'S_LEFT',
             directionTypes['S_RIGHT']: 'S_RIGHT',
         }.get(direction, direction)
 
-        validDirections = list((distantDirectionMessages if getDistantMsg else directionMessages).keys())
+        use_steps = getDistantMsg and addSteps
+        message_pool = distantDirectionWithStepsMessages if use_steps else (
+            distantDirectionMessages if getDistantMsg else directionMessages
+        )
+
+        validDirections = list(message_pool.keys())
         if normalized_direction not in validDirections:
             return 'Unknown direction'
         
-        validMessages = (distantDirectionMessages if getDistantMsg else directionMessages).get(normalized_direction)
+        validMessages = message_pool.get(normalized_direction)
         randomIndex = random.randrange(0, len(validMessages))
         return validMessages[randomIndex]
     except Exception as e:

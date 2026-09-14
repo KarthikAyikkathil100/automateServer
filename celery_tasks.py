@@ -547,7 +547,14 @@ def directionDetectionJob(data, route_data):
         if download_success == False:
             raise Exception('download failed')
         logging.info('Starting the direction detection')
-        final_directions = directionDetection(file_name)
+        location_id = route_data.get('locId')
+        captions_having_steps = False
+        if location_id:
+            location_data = get_location_data(
+                location_id, env, ['id', 'captionsHavingSteps']
+            )
+            captions_having_steps = location_data.get('captionsHavingSteps') == True if location_data else False
+        final_directions = directionDetection(file_name, captions_having_steps)
         if final_directions == False:
             raise Exception('Error while generating directions')
         # Store these directions in dynamo table
