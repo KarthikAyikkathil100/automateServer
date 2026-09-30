@@ -22,7 +22,7 @@ pure_turns_directions = [x for x in all_turns if x != 'END']
 
 def get_gif_name(direction: str, route_id, hexColor = None):
     direction_map = {
-        'STRAIGHT': 'straight-25slow.gif',
+        'STRAIGHT': 'straight.gif',
         'LEFT': 'left-25speed.gif',
         'RIGHT': 'right-25speed.gif',
         'SLIGHT_LEFT': 'left-25speed.gif',
