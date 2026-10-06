@@ -1,4 +1,9 @@
-from moviepy.editor import VideoFileClip, CompositeVideoClip, concatenate_videoclips
+from moviepy.editor import (
+    CompositeVideoClip,
+    VideoClip,
+    VideoFileClip,
+    concatenate_videoclips,
+)
 from animation_gif_helpers import processDirections
 import numpy as np
 import logging
@@ -14,9 +19,9 @@ MASCOT_Y_FROM_BOTTOM_FRACTION_MIN = 0.0
 MASCOT_Y_FROM_BOTTOM_FRACTION_MAX = 1.0
 
 DIRECTION_GIF_MAP = {
-    'STRAIGHT': 'v6_straight.gif',
-    'LEFT': 'v6_left.gif',
-    'SLIGHT_LEFT': 'v6_left.gif',
+    'STRAIGHT': 'bunny_straight_shadow.gif',
+    'LEFT': 'bunny_with_shadow.gif',
+    'SLIGHT_LEFT': 'bunny_with_shadow.gif',
     'RIGHT': 'v6_right.gif',
     'SLIGHT_RIGHT': 'v6_right.gif',
 }
@@ -45,6 +50,31 @@ def resolve_mascot_y_from_bottom_fraction(mascot_y_from_bottom_fraction=None):
     )
 
 
+def matte_transparent_black(clip):
+    """
+    FFmpeg fills transparent GIF pixels with white. Resize blends that white
+    into the dark shadow, so zero RGB wherever the mask is transparent first.
+    """
+    source_mask = clip.mask
+
+    def make_frame(t):
+        frame = np.array(clip.get_frame(t), copy=True)
+        if source_mask is None:
+            return frame
+        mask = source_mask.get_frame(t)
+        if mask.ndim == 3:
+            mask = mask[..., 0]
+        frame[mask <= 0] = 0
+        return frame
+
+    painted = VideoClip(make_frame, duration=clip.duration)
+    if clip.fps:
+        painted = painted.set_fps(clip.fps)
+    if source_mask is not None:
+        painted = painted.set_mask(source_mask)
+    return painted
+
+
 def build_bunny_overlay(
     start_time,
     end_time,
@@ -65,6 +95,7 @@ def build_bunny_overlay(
 
     gif_path = get_bunny_gif_path(direction)
     bunny = VideoFileClip(gif_path, has_mask=True)
+    bunny = matte_transparent_black(bunny)
 
     width_fraction = resolve_mascot_width_fraction(mascot_width_fraction)
     target_width = max(1, int(base_vid_width * width_fraction))
