@@ -8,6 +8,7 @@ venv
 penv
 __pycache__
 *.mp4
+newGifs/kids/bunny/*.mov
 *.js
 images/*
 colored_gifs/*
