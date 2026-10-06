@@ -17,8 +17,8 @@ DIRECTION_GIF_MAP = {
     'STRAIGHT': 'v6_straight.gif',
     'LEFT': 'v6_left.gif',
     'SLIGHT_LEFT': 'v6_left.gif',
-    'RIGHT': 'bunny-right.gif',
-    'SLIGHT_RIGHT': 'bunny-right.gif',
+    'RIGHT': 'v6_right.gif',
+    'SLIGHT_RIGHT': 'v6_right.gif',
 }
 
 
