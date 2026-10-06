@@ -1,0 +1,60 @@
+{
+  "video_path": "blurred/hospital.mov",
+  "hex_color": null,
+  "use_gifs": true,
+  "animation_version": "v2.1",
+  "mascot_width": 0.45,
+  "mascot_y_from_bottom_fraction": 0.10,
+  "directions": [
+    {
+      "directionIcon": "STRAIGHT",
+      "startTime": 0,
+      "endTime": 20,
+      "description": "Go straight",
+      "message": "Go straight"
+    },
+    {
+      "directionIcon": "LEFT",
+      "startTime": 20,
+      "endTime": 22,
+      "description": "Go straight",
+      "message": "Go straight"
+    },
+    {
+      "directionIcon": "STRAIGHT",
+      "startTime": 22,
+      "endTime": 47,
+      "description": "Go straight",
+      "message": "Go straight"
+    },
+    {
+      "directionIcon": "LEFT",
+      "startTime": 47,
+      "endTime": 53,
+      "description": "Go straight",
+      "message": "Go straight"
+    },
+    {
+      "directionIcon": "STRAIGHT",
+      "startTime": 53,
+      "endTime": 57,
+      "description": "Go straight",
+      "message": "Go straight"
+    },
+    {
+      "directionIcon": "LEFT",
+      "startTime": 57,
+      "endTime": 59,
+      "description": "Go straight",
+      "message": "Go straight"
+    },
+    {
+      "directionIcon": "STRAIGHT",
+      "startTime": 59,
+      "endTime": 70,
+      "description": "Go straight",
+      "message": "Go straight",
+      "showAnimations": false
+    }
+  ]
+}
