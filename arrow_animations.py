@@ -13,10 +13,13 @@ animation_duration = 12
 turn_animation_duration = 14
 start_height = 20
 end_height = 700
-straight_arrow_end_height = 400
+straight_arrow_end_height = 720
 gif_width_scale_factor = 1.1
-second_animation_gap = 5
+second_animation_gap = 4
 short_anim_max_scale = 0.5
+straight_start_y_frac = 0.55
+straight_end_y_frac = 1.05  # top of arrow finishes just past frame bottom
+straight_y_ease_power = 2.8  # >1: slower early crawl, faster exit
 pure_turns_directions = [x for x in all_turns if x != 'END']
 
 
@@ -115,19 +118,18 @@ def get_moving_position_dynamic(start_time, end_time, vid_width, vid_height, gif
     duration = end_time - start_time
 
     def moving_position(t):
-        progress = (t / duration)
-    
         if direction in ['STRAIGHT',]:
-            progress = progress * speed_factor
-        progress = min(progress, 1)
-
-        if direction in ['STRAIGHT',]:
-            if duration < animation_duration:
-                # y = vid_height * (0.55 + 0.03 * progress)
-                y = vid_height * (0.55 + (0.50 * (duration / animation_duration)) * progress)
-            else:
-                y = vid_height * (0.55 + 0.50 * progress)
+            # Full exit with ease-in: crawl early, accelerate so tip clears bottom.
+            u = min(max(t / duration, 0), 1)
+            progress = u ** straight_y_ease_power
+            y = vid_height * (
+                straight_start_y_frac
+                + (straight_end_y_frac - straight_start_y_frac) * progress
+            )
             return ("center", y)
+
+        progress = (t / duration)
+        progress = min(progress, 1)
 
         y = vid_height * (start_frac + (0.8 - start_frac) * progress)
 
@@ -182,22 +184,30 @@ def ensure_rgb_frame_with_time(get_frame, t):
         return frame[:, :, :3]
     return frame
 
+def _scale_target_height(direction):
+    if direction == 'STRAIGHT':
+        return straight_arrow_end_height
+    return end_height
+
+
 def scale_frame_wrapper(duration, direction, width_factor=gif_width_scale_factor):
     """
     width_factor > 1 → increase width along with height
     If duration < animation_duration, scale less aggressively
     """
+    target_height = _scale_target_height(direction)
+
     def scale_frame(get_frame, t):
         progress = max(0, min(1, t / duration))
         
         # Reduce scaling when duration is shorter
         if duration < animation_duration:
             scale_ratio = duration / animation_duration
-            height_change = (end_height - start_height) * scale_ratio
+            height_change = (target_height - start_height) * scale_ratio
             current_height = start_height + height_change * progress
             effective_width_factor = 1 + (width_factor - 1) * scale_ratio
         else:
-            current_height = start_height + (end_height - start_height) * progress
+            current_height = start_height + (target_height - start_height) * progress
             effective_width_factor = width_factor
 
         frame = get_frame(t)
@@ -218,17 +228,19 @@ def scale_mask_wrapper(duration, direction, width_factor=gif_width_scale_factor)
     Resize the alpha mask (1 channel) over time.
     Must match the RGB scaling exactly!
     """
+    target_height = _scale_target_height(direction)
+
     def scale_mask(get_frame, t):
         progress = max(0, min(1, t / duration))
         
         # Reduce scaling when duration is shorter (same as frame scaling)
         if duration < animation_duration:
             scale_ratio = duration / animation_duration
-            height_change = (end_height - start_height) * scale_ratio
+            height_change = (target_height - start_height) * scale_ratio
             current_height = start_height + height_change * progress
             effective_width_factor = 1 + (width_factor - 1) * scale_ratio
         else:
-            current_height = start_height + (end_height - start_height) * progress
+            current_height = start_height + (target_height - start_height) * progress
             effective_width_factor = width_factor
 
         frame = get_frame(t)
