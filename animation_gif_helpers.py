@@ -220,9 +220,11 @@ def tint_gif_with_shading(input_path, output_path, hex_color, min_brightness=0.3
 
         img = Image.open(input_path)
         frames = []
+        durations = []
 
         for f in range(img.n_frames):
             img.seek(f)
+            durations.append(img.info.get("duration", 100))
             frame = img.convert("RGBA")
             arr = np.array(frame).astype(float)
 
@@ -244,6 +246,7 @@ def tint_gif_with_shading(input_path, output_path, hex_color, min_brightness=0.3
             output_path,
             save_all=True,
             append_images=frames[1:],
+            duration=durations,
             loop=0,
             disposal=2
         )
