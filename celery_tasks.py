@@ -383,12 +383,15 @@ def arrowAttachJob(data, route_data):
                 raise Exception('DB update error')
         elif reRunArrowAttach == False and showAnimationsChanged == True:
             update_data = {
+                'newAnimationVideoLink': new_link,
                 'showAnimationsChanged': None,
                 'reRunArrowAttach': None,
                 'processStatus': PROCESS_STATUS.ARROW_ATTACHMENT_SUCCESS
             }
             if total_duration == None:
                 update_data['totalDuration'] = int(video_duration)
+            if existing_processed_video_link != None:
+                update_data['oldProcessedVideoLink'] = existing_processed_video_link
             db_update_success = update_record(Tables.ROUTES, {"id": route_id}, update_data, env)
             if db_update_success == False:
                 raise Exception('DB update error')
