@@ -749,9 +749,3 @@ def processRoute():
     except Exception as e:
         return None, 'Error while processing route'
 logging.info(f'__name__ => {__name__}')
-
-if __name__ == '__main__':
-    logging.info('Starting development server...')
-    app.run(host="0.0.0.0", port=5000, debug=True)
-else:
-    logging.info('not going in main')
