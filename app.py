@@ -1227,14 +1227,3 @@ def processRoute():
     except Exception as e:
         return None, 'Error while processing route'
 logging.info(f'__name__ => {__name__}')
-
-if __name__ == '__main__':
-    try:
-        logging.info('Server starting ...')
-        app.run(host="0.0.0.0", port=5000, debug=True)
-        logging.info('Server started ...')
-    except Exception as e:
-        logging.info('Error while starting server')
-        logging.info(e)
-else:
-    logging.info('not going in main')
