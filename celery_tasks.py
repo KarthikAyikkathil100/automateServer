@@ -3,7 +3,6 @@ import os
 import uuid
 import subprocess
 
-from flask import  jsonify
 from animation_gif_helpers import manage_colored_gifs
 from blur_automate import blurVideo
 from direction_detection import directionDetection
