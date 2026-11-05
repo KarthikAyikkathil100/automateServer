@@ -34,7 +34,7 @@ RUN apt-get update && apt-get install -y \
     rm -rf /var/lib/apt/lists/*
 
 # Install the required dependencies inside the virtual environment
-# RUN pip install --no-cache-dir common Flask boto3 numpy opencv-python-headless awscli deface psutil moviepy==1.0.3 pillow imageio tqdm decorator
+# RUN pip install --no-cache-dir common boto3 numpy opencv-python-headless awscli deface psutil moviepy==1.0.3 pillow imageio tqdm decorator
 
 RUN pip install --no-cache-dir \
     pillow==9.5.0 \
@@ -46,7 +46,6 @@ RUN pip install --no-cache-dir \
     imageio-ffmpeg==0.5.1 \
     decorator \
     tqdm \
-    Flask \
     boto3 \
     awscli \
     deface \
@@ -86,10 +85,6 @@ COPY ecs_protection.py ./ecs_protection.py
 # Verify the installation
 RUN aws --version
 
-# Expose the port the app runs on
-EXPOSE 5000
-
-# ENTRYPOINT ["python", "app.py"]
 # Default command
 CMD ["celery", "-A", "celery_app", "worker", "--loglevel=info", "--concurrency=5", "--pool=prefork", "--prefetch-multiplier=1"]
 
