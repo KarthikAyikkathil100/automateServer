@@ -1,4 +1,4 @@
-FROM python:3.8
+FROM python:3.12-slim-bookworm@sha256:935c3c5b12357a7e10caa9c1e6ca5692344d97cf229832ef584be2cec9fc03df
 
 
 WORKDIR /app
@@ -18,6 +18,7 @@ RUN apt-get update && apt-get install -y \
     libxext6 \
     libxrender1 \
     libgl1 \
+    libcurl4 \
     libjpeg-dev \
     libpng-dev \
     libtiff-dev \
@@ -33,24 +34,28 @@ RUN apt-get update && apt-get install -y \
     libraqm-dev && \
     rm -rf /var/lib/apt/lists/*
 
-# Install the required dependencies inside the virtual environment
-# RUN pip install --no-cache-dir common boto3 numpy opencv-python-headless awscli deface psutil moviepy==1.0.3 pillow imageio tqdm decorator
+COPY requirements.txt .
+# deface declares opencv-python. Install it without dependencies so the
+# headless cv2 wheel stays the only OpenCV distribution in the image.
+RUN grep -v '^deface==' requirements.txt > /tmp/requirements-main.txt \
+    && pip install --no-cache-dir -r /tmp/requirements-main.txt \
+    && pip install --no-cache-dir --no-deps deface==1.5.0 \
+    && python - <<'PY'
+import subprocess
+import importlib.metadata as metadata
 
-RUN pip install --no-cache-dir \
-    pillow==9.5.0 \
-    common \
-    numpy==1.24.4 \
-    moviepy==1.0.3 \
-    opencv-python-headless==4.8.1.78 \
-    imageio==2.35.1 \
-    imageio-ffmpeg==0.5.1 \
-    decorator \
-    tqdm \
-    boto3 \
-    awscli \
-    deface \
-    psutil \
-    "celery[sqs]"
+check = subprocess.run(["pip", "check"], capture_output=True, text=True)
+allowed = "deface 1.5.0 requires opencv-python, which is not installed."
+lines = [ln.strip() for ln in (check.stdout + check.stderr).splitlines() if ln.strip()]
+unexpected = [ln for ln in lines if ln != allowed]
+if unexpected:
+    raise SystemExit("pip check failed:\n" + "\n".join(unexpected))
+names = {dist.metadata["Name"].lower() for dist in metadata.distributions()}
+if "opencv-python" in names or "opencv-python-headless" not in names:
+    raise SystemExit(f"unexpected OpenCV distributions: {sorted(names)}")
+PY
+RUN deface --help >/dev/null \
+    && python -c "import cv2, PIL, boto3, requests, celery, pycurl; from moviepy.editor import VideoFileClip"
 
 # Force MoviePy to use system ffmpeg
 ENV IMAGEIO_FFMPEG_EXE=/usr/bin/ffmpeg
@@ -59,6 +64,7 @@ ENV IMAGEIO_FFMPEG_EXE=/usr/bin/ffmpeg
 #     apt-get install -y ffmpeg && \
 #     rm -rf /var/lib/apt/lists/*
 
+COPY common.py .
 COPY video.py .
 COPY tst_scene_render.py .
 
@@ -84,9 +90,6 @@ COPY trim_video.py ./trim_video.py
 COPY celery_app.py ./celery_app.py
 COPY celery_tasks.py ./celery_tasks.py
 COPY ecs_protection.py ./ecs_protection.py
-
-# Verify the installation
-RUN aws --version
 
 # Default command
 CMD ["celery", "-A", "celery_app", "worker", "--loglevel=info", "--concurrency=4", "--pool=prefork", "--prefetch-multiplier=1"]
